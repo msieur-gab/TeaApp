@@ -4,7 +4,7 @@ import NFCHandler from './nfc-handler.js';
 import teaDB from './db.js';
 import './components/tea-card.js';
 import './components/tea-timer.js';
-import './components/menu.js';
+import './components/tea-menu.js';
 
 class TeaApp {
   constructor() {
