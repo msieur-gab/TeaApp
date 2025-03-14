@@ -3,9 +3,9 @@
   "short_name": "Tea Timer",
   "description": "An app to track your tea collection and steep the perfect cup",
   "start_url": "./index.html",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#f5f7fa",
-  "theme_color": "#4a90e2",
+  "theme_color": "#333",
   "icons": [
     {
       "src": "./assets/icons/icon-72x72.png",
