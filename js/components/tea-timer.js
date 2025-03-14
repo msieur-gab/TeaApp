@@ -345,17 +345,45 @@ class TeaTimer extends HTMLElement {
     }
     this.playCompletionSound();
 
-    // Play a sound or show notification
-  if (Notification.permission === 'granted') {
-    const notification = new Notification('Tea Timer', {
-      body: `Your ${this.teaData?.name || 'tea'} is ready!`,
-      icon: './assets/icons/tea-icon.png',
-      tag: 'tea-timer-notification', // This causes notifications to replace each other
-      renotify: true // This makes the device still alert the user even if replacing a notification
-    });
-  }
+    // Enhanced notification handling
+    const showNotification = () => {
+      // Check if Notifications are supported
+      if (!('Notification' in window)) {
+        console.warn('Notifications not supported');
+        return;
+      }
 
-  
+      // Request permission if not already granted
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          try {
+            // Create notification with more robust options
+            const notification = new Notification('Tea Timer', {
+              body: `Your ${this.teaData?.name || 'tea'} is ready!`,
+              icon: './assets/icons/apple-touch-icon.png', // Use a larger, more recognizable icon
+              tag: 'tea-timer-notification',
+              renotify: true,
+              requireInteraction: true // Keeps notification visible until dismissed
+            });
+
+            // Optional: Add click handler to bring app to foreground
+            notification.onclick = () => {
+              window.focus();
+              notification.close();
+            };
+          } catch (error) {
+            console.error('Failed to create notification:', error);
+          }
+        } else {
+          console.warn('Notification permission denied');
+        }
+      }).catch(error => {
+        console.error('Error requesting notification permission:', error);
+      });
+    };
+
+    // Attempt to show notification
+    showNotification();
     
     // Update button states
     this.updateButtonStates('completed');
