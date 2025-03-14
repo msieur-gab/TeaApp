@@ -338,7 +338,7 @@ class TeaTimer extends HTMLElement {
     this.updateButtonStates('reset');
   }
   
-  timerCompleted() {
+timerCompleted() {
     // Vibration feedback if supported
     if ('vibrate' in navigator) {
       navigator.vibrate([200, 100, 200]);
@@ -504,8 +504,9 @@ class TeaTimer extends HTMLElement {
         left: 0;
         right: 0;
         z-index: 100;
+        pointer-events: ${this.isActive ? 'auto' : 'none'};
       }
-      
+
       .timer-drawer {
         background-color: white;
         border-top-left-radius: 16px;
@@ -515,7 +516,7 @@ class TeaTimer extends HTMLElement {
         transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
         overflow: hidden;
       }
-      
+
       .drawer-handle {
         height: 50px;
         display: flex;
@@ -525,6 +526,7 @@ class TeaTimer extends HTMLElement {
         position: relative;
         user-select: none;
         touch-action: none;
+        pointer-events: auto; /* Make sure the handle is always clickable */
       }
       
       .drawer-handle::before {

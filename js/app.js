@@ -277,6 +277,12 @@ class TeaApp {
     
     if (this.teaTimer && teaData) {
       this.teaTimer.setTeaData(teaData);
+      
+      // Make sure drawer is opened after setting tea data
+      // This is redundant but ensures the drawer is visible
+      setTimeout(() => {
+        this.teaTimer.openDrawer();
+      }, 100);
     }
   }
   

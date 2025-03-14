@@ -25,11 +25,15 @@ class TeaCard extends HTMLElement {
     // When the element is added to the DOM
     this.render();
     this.addEventListeners();
+    
+    // Listen for other cards being expanded
+    document.addEventListener('card-expanded', this.handleOtherCardExpanded.bind(this));
   }
   
   disconnectedCallback() {
     // Clean up event listeners when element is removed
     this.removeEventListeners();
+    document.removeEventListener('card-expanded', this.handleOtherCardExpanded.bind(this));
   }
   
   static get observedAttributes() {
@@ -59,35 +63,102 @@ class TeaCard extends HTMLElement {
   addEventListeners() {
     if (this.fullDetailView) {
       // In detail view mode
-      this.shadowRoot.querySelector('.back-button')?.addEventListener('click', this.closeDetailView.bind(this));
-      this.shadowRoot.querySelector('.steep-button')?.addEventListener('click', this.startSteeping.bind(this));
+      const backButton = this.shadowRoot.querySelector('.back-button');
+      const steepButton = this.shadowRoot.querySelector('.steep-button');
+      
+      if (backButton) {
+        backButton.addEventListener('click', this.closeDetailView.bind(this));
+      }
+      
+      if (steepButton) {
+        steepButton.addEventListener('click', this.startSteeping.bind(this));
+      }
     } else {
       // In card view mode
-      this.shadowRoot.querySelector('.card').addEventListener('click', this.handleCardClick.bind(this));
-      this.shadowRoot.querySelector('.steep-button')?.addEventListener('click', this.startSteeping.bind(this));
-      this.shadowRoot.querySelector('.view-details-btn')?.addEventListener('click', this.showDetailView.bind(this));
+      const card = this.shadowRoot.querySelector('.card');
+      if (card) {
+        card.addEventListener('click', this.handleCardClick.bind(this));
+      }
+      
+      // Add direct listeners to buttons for improved touch response
+      const steepButton = this.shadowRoot.querySelector('.steep-button');
+      if (steepButton) {
+        steepButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.startSteeping(e);
+        });
+      }
+      
+      const detailsButton = this.shadowRoot.querySelector('.view-details-btn');
+      if (detailsButton) {
+        detailsButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.showDetailView(e);
+        });
+      }
     }
   }
   
   removeEventListeners() {
     if (this.fullDetailView) {
-      this.shadowRoot.querySelector('.back-button')?.removeEventListener('click', this.closeDetailView.bind(this));
-      this.shadowRoot.querySelector('.steep-button')?.removeEventListener('click', this.startSteeping.bind(this));
+      const backButton = this.shadowRoot.querySelector('.back-button');
+      const steepButton = this.shadowRoot.querySelector('.steep-button');
+      
+      if (backButton) {
+        backButton.removeEventListener('click', this.closeDetailView.bind(this));
+      }
+      
+      if (steepButton) {
+        steepButton.removeEventListener('click', this.startSteeping.bind(this));
+      }
     } else {
-      this.shadowRoot.querySelector('.card')?.removeEventListener('click', this.handleCardClick.bind(this));
-      this.shadowRoot.querySelector('.steep-button')?.removeEventListener('click', this.startSteeping.bind(this));
-      this.shadowRoot.querySelector('.view-details-btn')?.removeEventListener('click', this.showDetailView.bind(this));
+      const card = this.shadowRoot.querySelector('.card');
+      if (card) {
+        card.removeEventListener('click', this.handleCardClick.bind(this));
+      }
+      
+      const steepButton = this.shadowRoot.querySelector('.steep-button');
+      if (steepButton) {
+        const steepEvents = steepButton.getEventListeners?.('click') || [];
+        steepEvents.forEach(listener => steepButton.removeEventListener('click', listener));
+      }
+      
+      const detailsButton = this.shadowRoot.querySelector('.view-details-btn');
+      if (detailsButton) {
+        const detailEvents = detailsButton.getEventListeners?.('click') || [];
+        detailEvents.forEach(listener => detailsButton.removeEventListener('click', listener));
+      }
     }
   }
   
   handleCardClick(event) {
     // Don't toggle if buttons were clicked
-    if (event.target.matches('.steep-button') || event.target.matches('.view-details-btn')) {
+    if (event.target.closest('.steep-button') || event.target.closest('.view-details-btn')) {
       return;
     }
     
     this.expanded = !this.expanded;
+    this.setAttribute('expanded', this.expanded);
     this.render();
+    
+    // If this card is now expanded, dispatch an event so other cards can close
+    if (this.expanded) {
+      const expandEvent = new CustomEvent('card-expanded', {
+        bubbles: true,
+        composed: true,
+        detail: { id: this._teaData?.id }
+      });
+      this.dispatchEvent(expandEvent);
+    }
+  }
+  
+  handleOtherCardExpanded(event) {
+    // If another card was expanded and it's not this one, collapse this one
+    if (this._teaData && event.detail.id !== this._teaData.id && this.expanded) {
+      this.expanded = false;
+      this.setAttribute('expanded', 'false');
+      this.render();
+    }
   }
   
   showDetailView(event) {

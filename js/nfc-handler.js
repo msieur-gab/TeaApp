@@ -74,7 +74,7 @@ class NFCHandler {
       // Create a URL object to parse the URL
       const parsedUrl = new URL(url);
       
-      // Option 1: Handle URL with query parameter format (/?tea=000.json)
+      // Option 1: Handle URL with query parameter format (/?tea=000.cha)
       if (parsedUrl.searchParams.has('tea')) {
         const teaFile = parsedUrl.searchParams.get('tea');
         return `${this.baseUrl}${this.teaFolder}${teaFile}`;
@@ -83,11 +83,11 @@ class NFCHandler {
       // Option 2: Handle URL with query parameter format (/?teaId=000)
       if (parsedUrl.searchParams.has('teaId')) {
         const teaId = parsedUrl.searchParams.get('teaId');
-        return `${this.baseUrl}${this.teaFolder}${teaId}.json`;
+        return `${this.baseUrl}${this.teaFolder}${teaId}.cha`;
       }
       
-      // Option 3: Handle direct path to JSON file (/tea/000.json)
-      if (url.includes('/tea/') && url.endsWith('.json')) {
+      // Option 3: Handle direct path to JSON file (/tea/000.cha)
+      if (url.includes('/tea/') && url.endsWith('.cha')) {
         // URL already points directly to the JSON file
         return url;
       }
@@ -96,7 +96,7 @@ class NFCHandler {
       // This assumes the NFC tag contains just a number like "000" or "010"
       if (/^\d+$/.test(url.trim())) {
         const teaId = url.trim();
-        return `${this.baseUrl}${this.teaFolder}${teaId}.json`;
+        return `${this.baseUrl}${this.teaFolder}${teaId}.cha`;
       }
       
       // If none of the above formats match, return the original URL
