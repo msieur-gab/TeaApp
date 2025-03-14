@@ -1,0 +1,18 @@
+{
+  "name": "New Earl Grey",
+  "category": "Black",
+  "origin": "China",
+  "description": "A black tea flavored with oil of bergamot, a citrus fruit with a peel that has a flavor similar to sweet lime, but more bitter.",
+  "brewTime": "3:30",
+  "temperature": "96°C",
+  "notes": "Pairs well with lemon or milk. Perfect for afternoon tea.",
+  "tags": ["citrus", "bergamot", "classic"],
+  
+  "westernBrewTime": "4:00",
+  "westernTemperature": "95°C",
+  "westernLeafRatio": "2g per 200ml",
+  
+  "gongfuBrewTime": "25",
+  "gongfuTemperature": "100°C",
+  "gongfuLeafRatio": "5g per 100ml"
+}
