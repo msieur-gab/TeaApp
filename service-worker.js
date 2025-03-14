@@ -2,18 +2,18 @@
 
 const CACHE_NAME = 'tea-timer-v1';
 const URLS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/css/main.css',
-  '/css/components.css',
-  '/css/menu.css',
-  '/js/app.js',
-  '/js/db.js',
-  '/js/nfc-handler.js',
-  '/js/components/tea-card.js',
-  '/js/components/tea-timer.js',
-  '/js/components/category-menu.js',
+  './',
+  './index.html',
+  './manifest.json',
+  './css/main.css',
+  './css/components.css',
+  './css/menu.css',
+  './js/app.js',
+  './js/db.js',
+  './js/nfc-handler.js',
+  './js/components/tea-card.js',
+  './js/components/tea-timer.js',
+  './js/components/category-menu.js',
   'https://cdn.jsdelivr.net/npm/dexie@3.2.3/dist/dexie.min.js'
 ];
 
