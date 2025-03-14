@@ -1,0 +1,24 @@
+{
+  "name": "Gyokuro",
+  "category": "Green",
+  "origin": "Japan",
+  "description": "Gyokuro is a premium Japanese green tea grown in the shade for weeks before harvest, increasing its chlorophyll and amino acid content. This produces an intensely umami, sweet flavor with minimal astringency and a rich, vibrant green infusion.",
+  "brewTime": "2:00",
+  "temperature": "60°C",
+  "notes": "The low brewing temperature is crucial for preserving Gyokuro's delicate flavors. This tea is typically enjoyed in small amounts, savoring its complex character and intensity.",
+  "tags": ["umami", "marine", "sweet", "grassy", "seaweed"],
+  
+  "westernBrewTime": "1:30",
+  "westernTemperature": "60°C",
+  "westernLeafRatio": "4g per 100ml",
+  
+  "gongfuBrewTime": "15",
+  "gongfuTemperature": "55°C",
+  "gongfuLeafRatio": "5g per 50ml",
+  
+  "harvestDate": "First flush (spring)",
+  "processingMethod": "Steamed, shade-grown",
+  "flavorProfile": ["umami", "sweet", "seaweed", "marine", "creamy"],
+  "caffeineLevel": "Medium to High",
+  "storageInstructions": "Store in airtight container away from light and strong odors. Best consumed fresh within 6 months."
+}

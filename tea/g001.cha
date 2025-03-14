@@ -1,0 +1,23 @@
+{
+  "name": "Dragonwell",
+  "category": "Green",
+  "origin": "Hangzhou, Zhejiang, China",
+  "description": "Dragonwell (Longjing) is one of China's most famous green teas, known for its flat, sword-shaped leaves and distinctive taste. It has a rich, toasty aroma with notes of chestnuts and a sweet, rounded flavor with a clean finish.",
+  "brewTime": "2:30",
+  "temperature": "80°C",
+  "notes": "High-quality Dragonwell has a beautiful jade-green color and smooth, velvety mouthfeel. The leaves can be eaten after brewing.",
+  "tags": ["nutty", "toasty", "vegetal", "sweet", "smooth"],
+  
+  "westernBrewTime": "2:30",
+  "westernTemperature": "80°C",
+  "westernLeafRatio": "3g per 200ml",
+  
+  "gongfuBrewTime": "30",
+  "gongfuTemperature": "85°C",
+  "gongfuLeafRatio": "5g per 100ml",
+  
+  "harvestDate": "Pre-Qingming (early Spring)",
+  "processingMethod": "Pan-fired",
+  "flavorProfile": ["chestnut", "vegetal", "buttery", "sweet corn", "umami"],
+  "caffeineLevel": "Medium"
+}

@@ -1,0 +1,26 @@
+{
+  "name": "Ancient Tree Sheng Pu-erh",
+  "category": "Pu-erh",
+  "origin": "Menghai, Yunnan, China",
+  "description": "This raw (sheng) pu-erh is made from leaves harvested from ancient trees in Yunnan's Menghai region. It offers a complex profile with bright, vibrant notes that will continue to develop with age, gaining smoothness and depth over time.",
+  "brewTime": "3:00",
+  "temperature": "95°C",
+  "notes": "Young sheng pu-erh can exhibit some astringency and bitterness that mellows with age. This tea can be aged for decades, with its character evolving significantly over time. Current age: 5 years.",
+  "tags": ["woody", "fruity", "floral", "honey", "astringent"],
+  
+  "westernBrewTime": "3:00",
+  "westernTemperature": "95°C",
+  "westernLeafRatio": "4g per 200ml",
+  
+  "gongfuBrewTime": "15",
+  "gongfuTemperature": "95°C",
+  "gongfuLeafRatio": "6g per 100ml",
+  
+  "harvestDate": "Spring 2018",
+  "processingMethod": "Withered, pan-fired, sun-dried, compressed",
+  "flavorProfile": ["apricot", "wood", "honey", "citrus zest", "wildflowers"],
+  "caffeineLevel": "Medium to High",
+  "storageInstructions": "Store in breathable container away from strong odors, at stable humidity (60-70%) for continued aging. Can be aged indefinitely.",
+  "form": "Compressed cake (357g)",
+  "agingPotential": "Excellent, will continue to develop for decades"
+}

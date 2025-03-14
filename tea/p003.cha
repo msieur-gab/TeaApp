@@ -1,0 +1,26 @@
+{
+  "name": "Aged Yiwu Sheng Pu-erh",
+  "category": "Pu-erh",
+  "origin": "Yiwu Mountain, Yunnan, China",
+  "description": "This aged raw pu-erh from the Yiwu region has been traditionally stored for over 15 years, developing complex characteristics that can only come with time. Known for its smoothness and depth, this tea offers a transcendent drinking experience with notes of aged wood, dried fruits, and subtle spice.",
+  "brewTime": "3:30",
+  "temperature": "95°C",
+  "notes": "The bitterness and astringency of young sheng pu-erh have mellowed significantly over years of aging, giving way to deep, sweet complexity. Each infusion reveals new dimensions of flavor, with later steepings often highlighting sweeter notes.",
+  "tags": ["woody", "sweet", "dried fruit", "honey", "complex"],
+  
+  "westernBrewTime": "3:30",
+  "westernTemperature": "95°C",
+  "westernLeafRatio": "4g per 200ml",
+  
+  "gongfuBrewTime": "15",
+  "gongfuTemperature": "95°C",
+  "gongfuLeafRatio": "6g per 100ml",
+  
+  "harvestDate": "Spring 2008",
+  "processingMethod": "Withered, pan-fired, sun-dried, compressed, traditionally stored",
+  "flavorProfile": ["dried dates", "aged wood", "medicinal herbs", "honey", "dark caramel"],
+  "caffeineLevel": "Medium",
+  "storageInstructions": "Keep in breathable container away from strong odors at stable humidity (60-70%). Will continue to develop with age.",
+  "form": "Compressed cake (357g), broken from larger cake",
+  "agingPotential": "Already well-aged, but can continue to develop for decades"
+}

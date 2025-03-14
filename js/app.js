@@ -19,8 +19,25 @@ class TeaApp {
   }
   
   getBaseUrl() {
-    // Extract the base URL of the current page (without query parameters)
-    return window.location.href.split('?')[0].replace(/\/+$/, '/');
+    // Extract the base URL of the current page (without filename and query parameters)
+    const url = window.location.href;
+    const urlObj = new URL(url);
+    
+    // Get the origin (protocol + hostname + port)
+    const origin = urlObj.origin;
+    
+    // Get the pathname and remove the filename part if present
+    let pathname = urlObj.pathname;
+    
+    // Remove index.html or any other file from the path
+    pathname = pathname.replace(/\/[^\/]*\.[^\/]*$/, '/');
+    
+    // Ensure the path ends with a slash
+    if (!pathname.endsWith('/')) {
+      pathname += '/';
+    }
+    
+    return origin + pathname;
   }
   
   async init() {
@@ -81,7 +98,7 @@ class TeaApp {
       this.cleanupUrl();
     } else if (urlParams.has('teaId')) {
       const teaId = urlParams.get('teaId');
-      const teaUrl = `${this.baseUrl}${this.teaFolder}${teaId}.json`;
+      const teaUrl = `${this.baseUrl}${this.teaFolder}${teaId}.cha`; // Update to .cha extension
       
       // Process the tea file from URL
       this.handleNFCRead(teaUrl);
@@ -242,10 +259,25 @@ handleResponsiveLayout() {
   
   async fetchTeaData(url) {
     try {
+      // First, check if the URL is valid
+      let validUrl = url;
+      
+      try {
+        // Try to construct a valid URL object to validate it
+        new URL(url);
+      } catch (urlError) {
+        // If URL is invalid, it might be a relative path or missing the protocol
+        console.warn('Invalid URL format:', url);
+        
+        // Try to fix the URL by prepending the base URL
+        validUrl = this.getBaseUrl() + (url.startsWith('/') ? url.slice(1) : url);
+        console.log('Trying to fix URL:', validUrl);
+      }
+      
       // Handle CORS issues by adding a fallback mechanism
-      // If the direct URL fails, try to construct a local path
       const fetchWithFallback = async (primaryUrl) => {
         try {
+          console.log('Fetching tea data from:', primaryUrl);
           const response = await fetch(primaryUrl);
           
           if (!response.ok) {
@@ -259,7 +291,9 @@ handleResponsiveLayout() {
           // Try to extract the filename and use local path as fallback
           try {
             const filename = primaryUrl.split('/').pop();
-            const localUrl = `${this.baseUrl}${this.teaFolder}${filename}`;
+            // Make sure we're using the correct extension for the fallback URL
+            const extension = filename.includes('.') ? '' : '.cha';
+            const localUrl = `${this.getBaseUrl()}${this.teaFolder}${filename}${extension}`;
             
             console.log('Trying fallback URL:', localUrl);
             
@@ -277,7 +311,7 @@ handleResponsiveLayout() {
         }
       };
       
-      const data = await fetchWithFallback(url);
+      const data = await fetchWithFallback(validUrl);
       
       // Validate required fields
       if (!data.name || !data.category) {
@@ -341,15 +375,17 @@ handleResponsiveLayout() {
     const teaId = prompt('Enter the tea ID (e.g., 000, 010):');
     
     if (teaId) {
-      // Construct the URL
-      const url = `${this.baseUrl}${this.teaFolder}${teaId}.json`;
+      // Construct the URL with proper base URL
+      const baseUrl = this.getBaseUrl();
+      const url = `${baseUrl}${this.teaFolder}${teaId}.cha`;
+      
       console.log('Manual input URL:', url);
       
       // Process the URL as if it was scanned
       await this.handleNFCRead(url);
     }
   }
-  
+
   showLoader() {
     if (this.loader) {
       this.loader.classList.add('active');

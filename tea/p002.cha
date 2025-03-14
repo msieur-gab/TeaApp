@@ -1,0 +1,26 @@
+{
+  "name": "Golden Needle Shou Pu-erh",
+  "category": "Pu-erh",
+  "origin": "Xishuangbanna, Yunnan, China",
+  "description": "This ripe (shou) pu-erh has undergone accelerated fermentation to mimic the character of aged raw pu-erh. Made from golden-tipped leaves, it brews a deep, dark infusion with smooth, earthy flavors and notes of dark wood, chocolate, and moist forest floor.",
+  "brewTime": "4:00",
+  "temperature": "99°C",
+  "notes": "Ripe pu-erh is known for its smooth, earthy qualities and lack of astringency. This tea has been aged for 3 years after processing, allowing any fermentation flavors to settle and integrate.",
+  "tags": ["earthy", "woody", "sweet", "smooth", "dark"],
+  
+  "westernBrewTime": "4:00",
+  "westernTemperature": "99°C",
+  "westernLeafRatio": "4g per 200ml",
+  
+  "gongfuBrewTime": "20",
+  "gongfuTemperature": "99°C",
+  "gongfuLeafRatio": "6g per 100ml",
+  
+  "harvestDate": "Autumn 2020",
+  "processingMethod": "Withered, pile-fermented (wo dui), dried, compressed",
+  "flavorProfile": ["earth", "dark chocolate", "wood", "camphor", "dried fruit"],
+  "caffeineLevel": "Medium",
+  "storageInstructions": "Store in breathable container away from strong odors at moderate humidity. Although already fermented, flavor will continue to mature with age.",
+  "form": "Loose leaf",
+  "agingPotential": "Good, can continue to mellow for 10-15 years"
+}

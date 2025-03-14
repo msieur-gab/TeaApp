@@ -1,0 +1,23 @@
+{
+  "name": "Silver Needle",
+  "category": "White",
+  "origin": "Fujian, China",
+  "description": "Silver Needle (Bai Hao Yinzhen) is one of the most revered white teas, consisting of only downy silvery-white buds picked in early spring. It produces a pale yellow infusion with a delicate, slightly sweet flavor and notes of honey and fresh hay.",
+  "brewTime": "3:00",
+  "temperature": "80°C",
+  "notes": "Silver Needle is best enjoyed without milk or sweetener to appreciate its subtle character. The leaves can typically be steeped multiple times.",
+  "tags": ["honey", "hay", "delicate", "sweet", "floral"],
+  
+  "westernBrewTime": "3:00",
+  "westernTemperature": "80°C",
+  "westernLeafRatio": "2g per 200ml",
+  
+  "gongfuBrewTime": "45",
+  "gongfuTemperature": "85°C",
+  "gongfuLeafRatio": "5g per 100ml",
+  
+  "harvestDate": "Spring",
+  "processingMethod": "Withering and air drying",
+  "flavorProfile": ["honey", "cucumber", "hay", "melon", "mild sweetness"],
+  "caffeineLevel": "Low"
+}
