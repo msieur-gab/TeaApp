@@ -4,7 +4,7 @@ import NFCHandler from './nfc-handler.js';
 import teaDB from './db.js';
 import './components/tea-card.js';
 import './components/tea-timer.js';
-import './components/category-menu.js';
+import './components/menu.js';
 
 class TeaApp {
   constructor() {
@@ -116,20 +116,40 @@ class TeaApp {
       manualInputBtn.addEventListener('click', this.handleManualInput.bind(this));
     }
     
-    // Menu toggle button
+    // Menu toggle button - now directly interacts with the menu component
     const menuToggleBtn = document.getElementById('menu-toggle-btn');
-    if (menuToggleBtn) {
+    if (menuToggleBtn && this.categoryMenu) {
       menuToggleBtn.addEventListener('click', () => {
-        if (this.categoryMenu) {
-          // Toggle the menu open state via the web component
-          this.categoryMenu.toggleMenu();
-        }
+        this.categoryMenu.toggleMenu();
       });
     }
     
-    // Handle back button for detail views
-    window.addEventListener('popstate', this.handlePopState.bind(this));
+// Handle responsive layout changes
+window.addEventListener('resize', this.handleResponsiveLayout.bind(this));
+  
+// Initial layout setup
+this.handleResponsiveLayout();
+
+// Handle back button for detail views
+window.addEventListener('popstate', this.handlePopState.bind(this));
+}
+
+// Add a new method to handle responsive layout changes
+handleResponsiveLayout() {
+  const isMobile = window.innerWidth < 768;
+  
+  // Adjust main content area margins based on screen size
+  const contentArea = document.querySelector('.content-area');
+  if (contentArea) {
+    if (!isMobile) {
+      // On desktop, give space for the menu
+      contentArea.style.marginLeft = '200px';
+    } else {
+      // On mobile, use full width
+      contentArea.style.marginLeft = '0';
+    }
   }
+}
   
   async loadTeas() {
     try {
