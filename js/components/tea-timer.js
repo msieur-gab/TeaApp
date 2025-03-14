@@ -11,7 +11,7 @@ class TeaTimer extends HTMLElement {
     this.originalTime = 0;
     this.timerInterval = null;
     this.teaData = null;
-    this.brewStyle = 'western'; // 'western' or 'gongfu'
+    this.brewStyle = 'gongfu'; // 'western' or 'gongfu'
     this.currentInfusion = 1;
     
     // Touch handling

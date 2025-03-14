@@ -107,6 +107,8 @@ class CategoryMenu extends HTMLElement {
   
   toggleMenu() {
     this.isOpen = !this.isOpen;
+      // this.setAttribute('open', this.isOpen.toString());
+
     this.render();
     
     // Dispatch a custom event so the app knows the menu state changed
