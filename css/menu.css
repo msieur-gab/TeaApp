@@ -1,0 +1,137 @@
+/* css/menu.css */
+
+/* Styles for the left-based push canvas menu */
+
+/* Menu Container */
+.side-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 250px;
+  background-color: white;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+}
+
+.side-menu.active {
+  transform: translateX(0);
+}
+
+/* Menu Header */
+.menu-header {
+  padding: 1.5rem 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.menu-title {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+  text-align: center;
+}
+
+/* Categories List */
+.categories-list {
+  padding: 1rem 0;
+}
+
+.category-item {
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.category-item:hover {
+  background-color: #f5f5f5;
+}
+
+.category-item.selected {
+  background-color: #e8f4f8;
+  font-weight: bold;
+  color: #4a90e2;
+}
+
+/* Category Indicators */
+.category-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.75rem;
+}
+
+/* Specific category colors */
+.category-dot.all {
+  background-color: #808080;
+}
+
+.category-dot.black {
+  background-color: #3a3a3a;
+}
+
+.category-dot.green {
+  background-color: #5cb85c;
+}
+
+.category-dot.oolong {
+  background-color: #f0ad4e;
+}
+
+.category-dot.white {
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+}
+
+.category-dot.herbal {
+  background-color: #9370db;
+}
+
+.category-dot.puerh {
+  background-color: #8b4513;
+}
+
+/* Menu Overlay */
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.menu-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Desktop layout */
+@media (min-width: 768px) {
+  .side-menu {
+    transform: translateX(0);
+    box-shadow: none;
+    border-right: 1px solid #eee;
+    width: 200px;
+  }
+  
+  .menu-overlay {
+    display: none;
+  }
+  
+  .app-container {
+    margin-left: 200px;
+  }
+  
+  .content-area {
+    padding-left: 1rem;
+  }
+}

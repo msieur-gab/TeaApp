@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#4a90e2">
+  <title>Tea Timer</title>
+  
+  <!-- Manifest for PWA -->
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="assets/icons/favicon.ico" type="image/x-icon">
+  
+  <!-- Apple Touch Icon -->
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  
+  <!-- External Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.3/dist/dexie.min.js"></script>
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/menu.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="menu-toggle-container">
+      <button id="menu-toggle-btn" class="menu-toggle-btn">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <h1>Tea Collection</h1>
+    <div class="header-actions">
+      <button id="manual-input-btn" class="action-button">
+        Add Tea (Manual)
+      </button>
+    </div>
+  </header>
+  
+  <main class="app-container">
+    <!-- Category Menu (Web Component) -->
+    <category-menu></category-menu>
+    
+    <!-- Tea Cards Container -->
+    <div class="content-area">
+      <div id="tea-container" class="tea-cards-container"></div>
+    </div>
+    
+    <!-- Tea Timer (Web Component) -->
+    <tea-timer></tea-timer>
+  </main>
+  
+  <!-- Loader -->
+  <div id="loader" class="loader">
+    <div class="loader-spinner"></div>
+  </div>
+  
+  <!-- Message Container -->
+  <div id="message-container" class="message-container"></div>
+  
+  <!-- Scripts -->
+  <script type="module" src="js/app.js"></script>
+  
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful:', registration.scope);
+          })
+          .catch(error => {
+            console.log('ServiceWorker registration failed:', error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
