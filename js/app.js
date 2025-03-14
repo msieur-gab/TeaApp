@@ -11,9 +11,16 @@ class TeaApp {
     this.nfcHandler = null;
     this.teaCards = [];
     this.currentCategory = null;
+    this.teaFolder = 'tea/';
+    this.baseUrl = this.getBaseUrl();
     
     // Initialize the app
     this.init();
+  }
+  
+  getBaseUrl() {
+    // Extract the base URL of the current page (without query parameters)
+    return window.location.href.split('?')[0].replace(/\/+$/, '/');
   }
   
   async init() {
@@ -25,6 +32,9 @@ class TeaApp {
     
     // Initialize UI elements
     this.initUI();
+    
+    // Check if the URL contains tea parameters
+    this.checkUrlForTeaParams();
     
     // Load teas from database
     await this.loadTeas();
@@ -54,6 +64,37 @@ class TeaApp {
         this.showMessage('NFC scanning is not available. Open this app on a compatible device.', 'warning');
       }
     });
+  }
+  
+  checkUrlForTeaParams() {
+    // Check if the current URL has tea parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.has('tea')) {
+      const teaFile = urlParams.get('tea');
+      const teaUrl = `${this.baseUrl}${this.teaFolder}${teaFile}`;
+      
+      // Process the tea file from URL
+      this.handleNFCRead(teaUrl);
+      
+      // Clean up the URL to avoid reprocessing on refresh
+      this.cleanupUrl();
+    } else if (urlParams.has('teaId')) {
+      const teaId = urlParams.get('teaId');
+      const teaUrl = `${this.baseUrl}${this.teaFolder}${teaId}.json`;
+      
+      // Process the tea file from URL
+      this.handleNFCRead(teaUrl);
+      
+      // Clean up the URL to avoid reprocessing on refresh
+      this.cleanupUrl();
+    }
+  }
+  
+  cleanupUrl() {
+    // Remove query parameters from URL to prevent reprocessing on refresh
+    const currentUrl = window.location.href.split('?')[0];
+    window.history.replaceState({}, document.title, currentUrl);
   }
   
   initUI() {
@@ -149,6 +190,8 @@ class TeaApp {
       this.showLoader();
       this.showMessage('Tea tag detected! Loading tea information...', 'info');
       
+      console.log('Processing tea URL:', url);
+      
       // Fetch the JSON data from the URL
       const teaData = await this.fetchTeaData(url);
       
@@ -179,13 +222,42 @@ class TeaApp {
   
   async fetchTeaData(url) {
     try {
-      const response = await fetch(url);
+      // Handle CORS issues by adding a fallback mechanism
+      // If the direct URL fails, try to construct a local path
+      const fetchWithFallback = async (primaryUrl) => {
+        try {
+          const response = await fetch(primaryUrl);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          
+          return await response.json();
+        } catch (primaryError) {
+          console.warn('Primary fetch failed:', primaryError);
+          
+          // Try to extract the filename and use local path as fallback
+          try {
+            const filename = primaryUrl.split('/').pop();
+            const localUrl = `${this.baseUrl}${this.teaFolder}${filename}`;
+            
+            console.log('Trying fallback URL:', localUrl);
+            
+            const fallbackResponse = await fetch(localUrl);
+            
+            if (!fallbackResponse.ok) {
+              throw new Error(`Fallback HTTP error! Status: ${fallbackResponse.status}`);
+            }
+            
+            return await fallbackResponse.json();
+          } catch (fallbackError) {
+            console.error('Fallback fetch failed:', fallbackError);
+            throw primaryError; // Re-throw the original error
+          }
+        }
+      };
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const data = await response.json();
+      const data = await fetchWithFallback(url);
       
       // Validate required fields
       if (!data.name || !data.category) {
@@ -239,9 +311,15 @@ class TeaApp {
   }
   
   async handleManualInput() {
-    const url = prompt('Enter the URL of a tea JSON file:');
+    // First, ask for the tea ID
+    const teaId = prompt('Enter the tea ID (e.g., 000, 010):');
     
-    if (url) {
+    if (teaId) {
+      // Construct the URL
+      const url = `${this.baseUrl}${this.teaFolder}${teaId}.json`;
+      console.log('Manual input URL:', url);
+      
+      // Process the URL as if it was scanned
       await this.handleNFCRead(url);
     }
   }

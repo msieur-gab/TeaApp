@@ -4,6 +4,8 @@ class NFCHandler {
   constructor(onReadCallback) {
     this.onReadCallback = onReadCallback;
     this.isReading = false;
+    this.baseUrl = 'https://msieur-gab.github.io/TeaApp/';
+    this.teaFolder = 'tea/';
   }
 
   async startNFCScanner() {
@@ -52,13 +54,60 @@ class NFCHandler {
         
         console.log('NFC tag URL:', url);
         
-        // Pass the URL to the callback function
-        if (this.onReadCallback) {
-          this.onReadCallback(url);
+        // Process the URL to get the tea JSON file
+        const teaUrl = this.processNfcUrl(url);
+        
+        // If a valid tea URL was found, pass it to the callback
+        if (teaUrl) {
+          if (this.onReadCallback) {
+            this.onReadCallback(teaUrl);
+          }
         }
         
         break;
       }
+    }
+  }
+  
+  processNfcUrl(url) {
+    try {
+      // Create a URL object to parse the URL
+      const parsedUrl = new URL(url);
+      
+      // Option 1: Handle URL with query parameter format (/?tea=000.json)
+      if (parsedUrl.searchParams.has('tea')) {
+        const teaFile = parsedUrl.searchParams.get('tea');
+        return `${this.baseUrl}${this.teaFolder}${teaFile}`;
+      }
+      
+      // Option 2: Handle URL with query parameter format (/?teaId=000)
+      if (parsedUrl.searchParams.has('teaId')) {
+        const teaId = parsedUrl.searchParams.get('teaId');
+        return `${this.baseUrl}${this.teaFolder}${teaId}.json`;
+      }
+      
+      // Option 3: Handle direct path to JSON file (/tea/000.json)
+      if (url.includes('/tea/') && url.endsWith('.json')) {
+        // URL already points directly to the JSON file
+        return url;
+      }
+      
+      // Option 4: Handle just an ID in the NFC tag
+      // This assumes the NFC tag contains just a number like "000" or "010"
+      if (/^\d+$/.test(url.trim())) {
+        const teaId = url.trim();
+        return `${this.baseUrl}${this.teaFolder}${teaId}.json`;
+      }
+      
+      // If none of the above formats match, return the original URL
+      // The app will attempt to fetch it and handle any errors
+      console.log('Using original URL:', url);
+      return url;
+      
+    } catch (error) {
+      console.error('Error processing NFC URL:', error);
+      // If there's an error parsing the URL, just return the original
+      return url;
     }
   }
 }
