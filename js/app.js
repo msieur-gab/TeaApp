@@ -371,6 +371,8 @@ class TeaApp {
   }
 }
 
+
+
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   window.teaApp = new TeaApp();
