@@ -1,19 +1,74 @@
 // notification-service.js
-// Handles all notification functionality for the Tea Timer app
+// Consolidated notification system that handles all notification functionality for the Tea Timer app
 
 class NotificationService {
   constructor() {
     this.hasRequestedPermission = false;
     this.sound = null;
+    this.audioContext = null;
     this.lastNotificationTime = 0;
     this.notificationDedupeInterval = 2000; // 2 seconds deduplication window
     this.isLogging = true; // Enable detailed logging
+    
+    // Initialize audio unlocking
+    this.setupAudioUnlocking();
   }
 
   // Helper for logging
   log(message) {
     if (this.isLogging) {
       console.log(`[NotificationService] ${message}`);
+    }
+  }
+
+  // Setup listeners to unlock audio on user interaction
+  setupAudioUnlocking() {
+    // These are common user interactions that browsers accept for enabling audio
+    const unlockEvents = ['touchstart', 'touchend', 'mousedown', 'keydown'];
+    const unlockAudio = this.unlockAudio.bind(this);
+    
+    // Add listeners for each event type
+    unlockEvents.forEach(eventType => {
+      document.addEventListener(eventType, unlockAudio, { once: false });
+    });
+    
+    // Also try to unlock when visibility changes to visible
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        unlockAudio();
+      }
+    });
+    
+    this.log('Audio unlocking event listeners set up');
+  }
+  
+  // Unlock audio on user interaction
+  unlockAudio() {
+    try {
+      // Only create AudioContext when needed
+      if (!this.audioContext) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          this.audioContext = new AudioContext();
+          this.log(`AudioContext created with state: ${this.audioContext.state}`);
+        } else {
+          this.log('AudioContext not supported in this browser');
+        }
+      }
+      
+      // If context is suspended, try to resume it
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        this.audioContext.resume().then(() => {
+          this.log('AudioContext resumed successfully');
+        }).catch(error => {
+          this.log(`Failed to resume AudioContext: ${error.message}`);
+        });
+      }
+      
+      // Also try to preload sounds now that we have user interaction
+      this.preloadSound();
+    } catch (error) {
+      this.log(`Error unlocking audio: ${error.message}`);
     }
   }
 
@@ -47,29 +102,61 @@ class NotificationService {
   async preloadSound() {
     try {
       if (!this.sound) {
-        this.log('Preloading notification sound');
-        this.sound = new Audio('./assets/sounds/notification.mp3');
+        this.log('Preloading notification sounds');
         
-        // Set up error handler
-        this.sound.onerror = (e) => {
-          this.log(`Error with primary sound: ${e.message}, trying fallback`);
-          this.sound = new Audio('./assets/sounds/notification.ogg');
-        };
+        // Create an array of promises for each sound format
+        const preloadPromises = [
+          this.preloadSoundFormat('./assets/sounds/notification.mp3', 'mp3'),
+          this.preloadSoundFormat('./assets/sounds/notification.ogg', 'ogg')
+        ];
         
-        // Preload the sound
-        this.sound.preload = 'auto';
-        
-        // Try to load it
-        try {
-          await this.sound.load();
-          this.log('Sound preloaded successfully');
-        } catch (loadError) {
-          this.log(`Error preloading sound: ${loadError.message}`);
-        }
+        // Wait for the first successful preload
+        await Promise.any(preloadPromises);
+        this.log('At least one sound format preloaded successfully');
       }
     } catch (e) {
-      this.log(`Error setting up sound: ${e.message}`);
+      this.log(`Error preloading sounds: ${e.message}`);
     }
+  }
+  
+  // Helper method to preload a specific sound format
+  async preloadSoundFormat(url, format) {
+    return new Promise((resolve, reject) => {
+      const audio = new Audio();
+      
+      audio.preload = 'auto';
+      
+      // Set up event handlers
+      audio.oncanplaythrough = () => {
+        this.log(`${format} format loaded and can play through`);
+        if (!this.sound) {
+          this.sound = audio;
+        }
+        resolve(audio);
+      };
+      
+      audio.onerror = (error) => {
+        this.log(`Error loading ${format} format: ${error.message || 'Unknown error'}`);
+        reject(new Error(`Failed to load ${format} format`));
+      };
+      
+      // Start loading
+      audio.src = url;
+      audio.load();
+      
+      // Set a timeout in case oncanplaythrough never fires
+      setTimeout(() => {
+        if (audio.readyState >= 3) { // HAVE_FUTURE_DATA or higher
+          this.log(`${format} format ready state: ${audio.readyState}`);
+          if (!this.sound) {
+            this.sound = audio;
+          }
+          resolve(audio);
+        } else {
+          reject(new Error(`Timeout loading ${format} format`));
+        }
+      }, 3000);
+    });
   }
 
   // Main method to notify users that tea is ready
@@ -109,27 +196,21 @@ class NotificationService {
 
   // Try to show notification via service worker
   async showServiceWorkerNotification(teaName) {
-    if (!('serviceWorker' in navigator)) {
-      this.log('Service Worker not supported');
+    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+      this.log('No active service worker controller');
       return false;
     }
     
     try {
-      // Check if we have an active service worker
-      if (navigator.serviceWorker.controller) {
-        this.log('Using service worker for notification');
-        
-        // Create and show a notification channel
-        navigator.serviceWorker.controller.postMessage({
-          type: 'TIMER_COMPLETE',
-          teaName: teaName
-        });
-        
-        return true;
-      } else {
-        this.log('No active service worker controller');
-        return false;
-      }
+      this.log('Using service worker for notification');
+      
+      // Send message to service worker
+      navigator.serviceWorker.controller.postMessage({
+        type: 'TIMER_COMPLETE',
+        teaName: teaName
+      });
+      
+      return true;
     } catch (error) {
       this.log(`Service worker notification error: ${error.message}`);
       return false;
@@ -153,7 +234,7 @@ class NotificationService {
         tag: 'tea-timer-notification',
         renotify: true,
         requireInteraction: true,
-        // Do not set silent: true here to ensure sound plays in some browsers
+        silent: false // Ensure sound can play
       });
       
       // Handle click on notification
@@ -170,68 +251,159 @@ class NotificationService {
     }
   }
 
-  // Play a sound notification
+  // Play a sound notification - consolidated all sound playing logic here
   async playSound() {
+    // Try multiple approaches in sequence for maximum reliability
     try {
-      // Create audio element if it doesn't exist yet
-      if (!this.sound) {
-        await this.preloadSound();
+      this.log('Attempting to play notification sound');
+      
+      // 1. First try: Web Audio API with AudioContext if available
+      if (this.audioContext && this.audioContext.state === 'running') {
+        const success = await this.playWithAudioContext();
+        if (success) return true;
       }
       
-      if (!this.sound) {
-        this.log('Sound object not available');
+      // 2. Second try: Basic HTML5 Audio API with preloaded sound
+      if (this.sound) {
+        const success = await this.playWithAudioElement(this.sound);
+        if (success) return true;
+      }
+      
+      // 3. Third try: Create new Audio elements for both formats
+      const mp3Success = await this.playWithAudioElement(new Audio('./assets/sounds/notification.mp3'));
+      if (mp3Success) return true;
+      
+      const oggSuccess = await this.playWithAudioElement(new Audio('./assets/sounds/notification.ogg'));
+      if (oggSuccess) return true;
+      
+      // 4. Last resort: Generate a beep programmatically
+      return this.generateBeepSound();
+    } catch (error) {
+      this.log(`All sound playing methods failed: ${error.message}`);
+      return false;
+    }
+  }
+  
+  // Helper to play with AudioContext (Web Audio API)
+  async playWithAudioContext() {
+    try {
+      if (!this.audioContext) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return false;
+        this.audioContext = new AudioContext();
+      }
+      
+      // Try to resume the audio context if it's suspended
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+      }
+      
+      // If still not running, fail
+      if (this.audioContext.state !== 'running') {
+        this.log(`AudioContext not running: ${this.audioContext.state}`);
         return false;
       }
       
-      // Reset to start if it was already playing
-      this.sound.currentTime = 0;
+      // Try to fetch and decode the audio file
+      const response = await fetch('./assets/sounds/notification.mp3');
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
       
-      // Set volume to maximum
-      this.sound.volume = 1.0;
+      // Create a source and play it
+      const source = this.audioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(this.audioContext.destination);
+      source.start(0);
       
-      // Play the sound (returns a promise)
-      this.log('Playing notification sound');
+      this.log('Sound played via AudioContext');
+      return true;
+    } catch (error) {
+      this.log(`AudioContext playback failed: ${error.message}`);
+      return false;
+    }
+  }
+  
+  // Helper to play with HTML5 Audio API
+  async playWithAudioElement(audio) {
+    return new Promise((resolve) => {
       try {
-        // Create a user interaction promise to handle browsers that require it
-        const playPromise = this.sound.play();
+        if (!audio) {
+          resolve(false);
+          return;
+        }
+        
+        // Reset audio if it was previously played
+        audio.currentTime = 0;
+        audio.volume = 1.0;
+        
+        // Set up event handlers
+        audio.onended = () => {
+          this.log('Sound played completely');
+          resolve(true);
+        };
+        
+        audio.onerror = (error) => {
+          this.log(`Audio playback error: ${error.message || 'Unknown error'}`);
+          resolve(false);
+        };
+        
+        // Try to play
+        const playPromise = audio.play();
         
         if (playPromise !== undefined) {
-          await playPromise;
-          this.log('Sound played successfully');
-          return true;
+          playPromise.then(() => {
+            this.log('Audio play promise resolved successfully');
+            // Let onended handle success case
+          }).catch((error) => {
+            this.log(`Audio play promise rejected: ${error.message}`);
+            resolve(false);
+          });
         } else {
-          this.log('Sound play() did not return a promise');
-          return true; // Assume it worked
-        }
-      } catch (playError) {
-        this.log(`Could not play timer sound: ${playError.message}`);
-        
-        // If it failed due to no user interaction, try a fallback approach
-        if (playError.name === 'NotAllowedError') {
-          this.log('Attempting fallback audio approach');
-          // Create a new audio context
-          try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (AudioContext) {
-              const audioContext = new AudioContext();
-              const oscillator = audioContext.createOscillator();
-              oscillator.type = 'sine';
-              oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 note
-              oscillator.connect(audioContext.destination);
-              oscillator.start();
-              oscillator.stop(audioContext.currentTime + 0.5); // Play for 0.5 seconds
-              this.log('Fallback audio played');
-              return true;
-            }
-          } catch (fallbackError) {
-            this.log(`Fallback audio failed: ${fallbackError.message}`);
-          }
+          // For browsers where play() doesn't return a promise
+          this.log('Audio play() did not return a promise, assuming success');
+          // Let onended handle success case
         }
         
+        // Set a timeout in case neither onended nor onerror fires
+        setTimeout(() => {
+          resolve(true); // Assume it's playing
+        }, 2000);
+      } catch (error) {
+        this.log(`Error in playWithAudioElement: ${error.message}`);
+        resolve(false);
+      }
+    });
+  }
+  
+  // Helper to generate a beep sound as last resort
+  async generateBeepSound() {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) {
+        this.log('AudioContext not supported for beep');
         return false;
       }
-    } catch (e) {
-      this.log(`Error playing sound: ${e.message}`);
+      
+      const context = new AudioContext();
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(784, context.currentTime); // G5 note
+      
+      gainNode.gain.setValueAtTime(0.1, context.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 1);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      
+      oscillator.start();
+      oscillator.stop(context.currentTime + 1);
+      
+      this.log('Generated beep sound as fallback');
+      return true;
+    } catch (error) {
+      this.log(`Beep generation failed: ${error.message}`);
       return false;
     }
   }
@@ -257,8 +429,9 @@ class NotificationService {
 // Create and export a singleton instance
 const notificationService = new NotificationService();
 
-// Preload sound on page load
+// Try to unlock audio on page load
 window.addEventListener('load', () => {
+  notificationService.unlockAudio();
   notificationService.preloadSound();
 });
 

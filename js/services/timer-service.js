@@ -21,9 +21,15 @@ class TimerService {
     // Bind methods
     this.handleWorkerMessage = this.handleWorkerMessage.bind(this);
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
+    this.handleServiceWorkerMessage = this.handleServiceWorkerMessage.bind(this);
     
     // Set up visibility change listener for syncing
     document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    
+    // Set up service worker message listener
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', this.handleServiceWorkerMessage);
+    }
     
     // Initialize the worker
     this.initWorker();
@@ -112,6 +118,17 @@ class TimerService {
         this.notifyUpdateCallbacks(this.timeRemaining);
         this.notifyStateChangeCallbacks('reset');
         break;
+    }
+  }
+  
+  // Handle messages from service worker
+  handleServiceWorkerMessage(event) {
+    if (event.data && event.data.type === 'PLAY_NOTIFICATION_SOUND') {
+      console.log('[TimerService] Received sound play request from Service Worker');
+      // Let the notification service handle the sound
+      notificationService.playSound().catch(error => {
+        console.error('Failed to play notification sound:', error);
+      });
     }
   }
   
@@ -289,12 +306,10 @@ class TimerService {
   
   // Notify all complete callbacks
   notifyCompleteCallbacks() {
-    // Play sound immediately (for maximum responsiveness)
-    this.playCompletionSound();
-    
     // Delegate notification to the notification service
-    // Send notifications in parallel with callbacks
-    const notificationPromise = notificationService.notifyTeaReady(this.teaName);
+    notificationService.notifyTeaReady(this.teaName).catch(error => {
+      console.error('Error showing notification:', error);
+    });
     
     // Call the callbacks immediately (don't wait for notification)
     this.onCompleteCallbacks.forEach(callback => {
@@ -303,12 +318,6 @@ class TimerService {
       } catch (error) {
         console.error('Error in timer complete callback:', error);
       }
-    });
-    
-    // Add a fallback method in case the notification service fails
-    notificationPromise.catch(error => {
-      console.error('Notification failed, attempting fallback:', error);
-      this.playCompletionSound(); // Try sound again as fallback
     });
   }
   
@@ -322,38 +331,14 @@ class TimerService {
       }
     });
   }
-
-  // Add this new method to ensure sound plays
-playCompletionSound() {
-  try {
-    // Create a direct audio element for maximum compatibility
-    const audio = new Audio('./assets/sounds/notification.mp3');
-    audio.volume = 1.0;
-    
-    // Try to play immediately
-    const playPromise = audio.play();
-    
-    // Handle promise if supported
-    if (playPromise !== undefined) {
-      playPromise.catch(error => {
-        console.warn('Primary sound play failed, trying fallback:', error);
-        
-        // Try ogg format as fallback
-        const fallbackAudio = new Audio('./assets/sounds/notification.ogg');
-        fallbackAudio.volume = 1.0;
-        fallbackAudio.play().catch(fallbackError => {
-          console.error('Fallback sound also failed:', fallbackError);
-        });
-      });
-    }
-  } catch (error) {
-    console.error('Error playing completion sound:', error);
-  }
-}
   
   // Clean up resources
   destroy() {
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.removeEventListener('message', this.handleServiceWorkerMessage);
+    }
     
     if (this.worker) {
       this.worker.terminate();

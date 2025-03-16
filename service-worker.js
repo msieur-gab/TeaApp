@@ -1,6 +1,6 @@
 // service-worker.js
 
-const CACHE_NAME = 'tea-timer-v0.4.1';
+const CACHE_NAME = 'tea-timer-v0.5.0';
 const URLS_TO_CACHE = [
   './',
   './index.html',
@@ -19,10 +19,9 @@ const URLS_TO_CACHE = [
   './js/services/wake-lock-service.js',
   './timer-worker.js',
   'https://cdn.jsdelivr.net/npm/dexie@3.2.3/dist/dexie.min.js'
-  // Removed sound files from the bulk caching - will handle separately
 ];
 
-// Media files that might return 206 Partial Content
+// Media files that need special handling
 const MEDIA_FILES = [
   './assets/sounds/notification.mp3',
   './assets/sounds/notification.ogg'
@@ -41,22 +40,43 @@ self.addEventListener('install', (event) => {
         return cache.addAll(URLS_TO_CACHE);
       })
       .then(() => {
-        // Then cache the media files one by one with fetch() and put()
+        // Then cache the media files one by one with better error handling
         return caches.open(CACHE_NAME).then((cache) => {
-          return Promise.all(
+          return Promise.allSettled(
             MEDIA_FILES.map(url => {
-              // Fetch each media file with no-cors mode to handle cross-origin issues
-              return fetch(url, { mode: 'no-cors' })
-                .then(response => {
-                  // Put the response in the cache
-                  // Use the original URL as the key even if the response URL is different
-                  return cache.put(url, response);
+              // First try with fetch
+              return fetch(url, { 
+                mode: 'no-cors',
+                cache: 'reload' // Force fresh fetch
+              })
+              .then(response => {
+                if (!response) {
+                  throw new Error('Empty response');
+                }
+                
+                // Put the response in the cache
+                console.log(`[Service Worker] Caching media file: ${url}`);
+                return cache.put(url, response);
+              })
+              .catch(error => {
+                console.error(`[Service Worker] Failed to cache media file ${url}:`, error);
+                
+                // Try a second approach as fallback
+                return fetch(url, { 
+                  mode: 'no-cors',
+                  credentials: 'omit',
+                  redirect: 'follow'
                 })
-                .catch(error => {
-                  console.error(`[Service Worker] Failed to cache media file ${url}:`, error);
-                  // Continue even if one file fails
+                .then(fallbackResponse => {
+                  console.log(`[Service Worker] Caching media with fallback approach: ${url}`);
+                  return cache.put(url, fallbackResponse);
+                })
+                .catch(fallbackError => {
+                  console.error(`[Service Worker] All attempts failed for ${url}:`, fallbackError);
+                  // Continue even if all attempts fail
                   return Promise.resolve();
                 });
+              });
             })
           );
         });
@@ -97,35 +117,56 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // For media files, use a different strategy
-  if (MEDIA_FILES.some(file => event.request.url.endsWith(file))) {
+  // For media files, use a network-first strategy with fallback to cache
+  if (MEDIA_FILES.some(file => event.request.url.includes(file))) {
     event.respondWith(
-      caches.match(event.request).then((response) => {
-        // Return cached response if found
-        if (response) {
+      fetch(event.request)
+        .then(response => {
+          // Clone the response since the browser will consume it
+          const responseToCache = response.clone();
+          
+          // Update the cache with the new response
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+            
           return response;
-        }
-        
-        // Otherwise, fetch from network
-        return fetch(event.request, { mode: 'no-cors' })
-          .then(response => {
-            // Check if we received a valid response
-            if (!response || (response.type !== 'basic' && response.type !== 'cors' && response.type !== 'opaque')) {
-              return response;
-            }
-            
-            // Clone the response since the browser will consume it
-            const responseToCache = response.clone();
-            
-            // Update the cache with the new response
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-            
-            return response;
-          });
-      })
+        })
+        .catch((error) => {
+          console.log('[Service Worker] Fetch failed for media, using cache:', error);
+          
+          return caches.match(event.request)
+            .then((cachedResponse) => {
+              if (cachedResponse) {
+                return cachedResponse;
+              }
+              
+              // If no cached response, try to match by filename
+              // This helps when URLs might have query parameters or different origins
+              const url = new URL(event.request.url);
+              const fileName = url.pathname.split('/').pop();
+              
+              return caches.open(CACHE_NAME)
+                .then(cache => cache.keys())
+                .then(keys => {
+                  const matchingKey = keys.find(key => 
+                    key.url.includes(fileName)
+                  );
+                  
+                  if (matchingKey) {
+                    return caches.match(matchingKey);
+                  }
+                  
+                  // No match found in any form
+                  console.error('[Service Worker] No cached version found for:', fileName);
+                  return new Response(null, {
+                    status: 200,
+                    headers: { 'Content-Type': 'audio/mpeg' }
+                  });
+                });
+            });
+        })
     );
     return;
   }
@@ -221,7 +262,7 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Handle messages from the client
+// Handle messages from the client - Most importantly tea timer notifications
 self.addEventListener('message', (event) => {
   if (!event.data) return;
   
@@ -242,7 +283,7 @@ self.addEventListener('message', (event) => {
       renotify: true,
       timestamp: Date.now(),
       requireInteraction: true,
-      // Not setting silent to true to ensure sound can play
+      silent: false, // Explicitly set to false to ensure sound plays
       actions: [
         {
           action: 'open',
@@ -251,43 +292,21 @@ self.addEventListener('message', (event) => {
       ]
     }).then(() => {
       console.log('[Service Worker] Notification shown successfully');
+      
+      // After showing notification, prompt clients to play sound directly
+      // This serves as a backup mechanism for sound playback
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'PLAY_NOTIFICATION_SOUND',
+            timestamp: Date.now()
+          });
+        });
+      });
     }).catch(error => {
       console.error('[Service Worker] Failed to show notification:', error);
     });
   }
-});
-
-// Handle notification action clicks
-self.addEventListener('notificationclick', (event) => {
-  console.log('[Service Worker] Notification click received:', event.notification.tag);
-  
-  // Close the notification
-  event.notification.close();
-  
-  // Handle different notification actions
-  const notificationAction = event.action;
-  
-  // Focus the app window regardless of action
-  // (default action if no specific action clicked)
-  event.waitUntil(
-    clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true
-    })
-    .then((clientList) => {
-      // Try to focus an existing window
-      for (const client of clientList) {
-        if (client.url.includes('/TeaApp/') && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      
-      // If no existing window, open a new one
-      if (clients.openWindow) {
-        return clients.openWindow('./');
-      }
-    })
-  );
 });
 
 // Handle periodic background sync for PWA

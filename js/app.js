@@ -65,7 +65,73 @@ class TeaApp {
     
     console.log('Tea app initialized');
   }
+
+  // Initialize sound system
+initSoundSystem() {
+  // Listen for service worker messages about notifications
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'PLAY_NOTIFICATION_SOUND') {
+        console.log('Received sound play request from Service Worker');
+        // The notification service will handle this
+        import('./services/notification-service.js').then(module => {
+          const notificationService = module.default;
+          notificationService.playSound().catch(error => {
+            console.error('Error playing sound:', error);
+          });
+        });
+      }
+    });
+  }
   
+  // Try to unlock audio on user interaction
+  this.registerAudioUnlockEvents();
+}
+
+// Register events to unlock audio on user interaction
+registerAudioUnlockEvents() {
+  const unlockEvents = ['touchstart', 'touchend', 'mousedown', 'keydown', 'click'];
+  
+  // Create one handler
+  const unlockAudio = () => {
+    // Try to create a silent audio context to unlock audio
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        const audioContext = new AudioContext();
+        
+        // Create and play a silent sound
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        gainNode.gain.value = 0;  // Silent
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.start(0);
+        oscillator.stop(0.001);
+        
+        console.log('Audio context unlocked via user interaction');
+        
+        // Preload sounds via notification service
+        import('./services/notification-service.js').then(module => {
+          const notificationService = module.default;
+          notificationService.preloadSound();
+        });
+      }
+    } catch (error) {
+      console.warn('Error unlocking audio:', error);
+    }
+  };
+  
+  // Register for all events
+  unlockEvents.forEach(eventType => {
+    document.addEventListener(eventType, unlockAudio, { once: true });
+  });
+  
+  console.log('Audio unlock events registered');
+}
+
   // Improved notification permission handling
   async checkNotificationPermission() {
     if ('Notification' in window) {
