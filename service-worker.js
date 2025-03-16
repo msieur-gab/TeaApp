@@ -229,6 +229,7 @@ self.addEventListener('message', (event) => {
   if (event.data.type === 'TIMER_COMPLETE') {
     const title = 'Tea Timer';
     const teaName = event.data.teaName || 'tea';
+    const silent = event.data.silent || false;
     
     // Show a notification with consistent format
     self.registration.showNotification(title, {
@@ -240,6 +241,7 @@ self.addEventListener('message', (event) => {
       renotify: true,
       timestamp: Date.now(),
       requireInteraction: true,
+      silent: silent, // Use the silent flag from the message
       actions: [
         {
           action: 'open',

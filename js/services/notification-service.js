@@ -5,6 +5,8 @@ class NotificationService {
   constructor() {
     this.hasRequestedPermission = false;
     this.sound = null;
+    this.lastNotificationTime = 0;
+    this.notificationDedupeInterval = 2000; // 2 seconds deduplication window
   }
 
   // Initialize the notification service
@@ -27,17 +29,46 @@ class NotificationService {
 
   // Main method to notify users that tea is ready
   async notifyTeaReady(teaName) {
-    // Try all notification methods concurrently
+    // Check if we've already sent a notification recently
+    const now = Date.now();
+    if (now - this.lastNotificationTime < this.notificationDedupeInterval) {
+      console.log('Notification already sent recently, skipping duplicate');
+      return true;
+    }
+    
+    this.lastNotificationTime = now;
+    
+    // Choose notification method based on page visibility
+    if (document.visibilityState === 'visible') {
+      // If page is visible, just play sound and vibrate - no visual notification
+      return this.notifyActiveApp(teaName);
+    } else {
+      // If page is hidden, use full notification
+      return this.notifyInactiveApp(teaName);
+    }
+  }
+  
+  // Notification when app is in focus (sound only)
+  async notifyActiveApp(teaName) {
+    console.log(`Tea ${teaName} ready - app is active, playing sound only`);
+    
+    const results = await Promise.all([
+      this.playSound(),
+      this.vibrate()
+    ]);
+    
+    return results.some(result => result);
+  }
+  
+  // Notification when app is in background
+  async notifyInactiveApp(teaName) {
+    console.log(`Tea ${teaName} ready - app is inactive, using full notification`);
+    
     const results = await Promise.all([
       this.showVisualNotification(teaName),
       this.playSound(),
       this.vibrate()
     ]);
-    
-    // Log if all notification methods failed
-    if (!results.some(result => result)) {
-      console.warn('All notification methods failed');
-    }
     
     return results.some(result => result);
   }
@@ -55,9 +86,11 @@ class NotificationService {
       // Try to use service worker for more reliable notifications
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         // Send message to service worker to show notification
+        // Set silent: true to prevent default notification sound
         navigator.serviceWorker.controller.postMessage({
           type: 'TIMER_COMPLETE',
-          teaName: teaName
+          teaName: teaName,
+          silent: true // Tell service worker to disable default sound
         });
         return true;
       } else {
@@ -80,7 +113,8 @@ class NotificationService {
           icon: './assets/icons/apple-touch-icon.png',
           tag: 'tea-timer-notification',
           renotify: true,
-          requireInteraction: true
+          requireInteraction: true,
+          silent: true // Disable default notification sound
         });
         
         notification.onclick = () => {
