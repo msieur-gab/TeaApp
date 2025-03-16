@@ -172,42 +172,64 @@ class NotificationService {
     
     this.lastNotificationTime = now;
     
-    // Try all notification methods for maximum reliability
-    const results = await Promise.allSettled([
-      this.showServiceWorkerNotification(teaName),
-      this.showRegularNotification(teaName),
-      this.playSound(),
-      this.vibrate()
-    ]);
-    
-    // Log results for debugging
-    results.forEach((result, index) => {
-      const methods = ['ServiceWorker Notification', 'Regular Notification', 'Sound', 'Vibration'];
-      if (result.status === 'fulfilled') {
-        this.log(`${methods[index]}: ${result.value ? 'Success' : 'Failed'}`);
-      } else {
-        this.log(`${methods[index]}: Error - ${result.reason}`);
-      }
-    });
-    
-    // Return true if any method succeeded
-    return results.some(r => r.status === 'fulfilled' && r.value === true);
+    // Handle notification based on visibility state
+    if (document.visibilityState === 'visible') {
+      // App is visible, just play sound, no visible notification needed
+      this.log('App is visible, playing sound only');
+      await this.playSound();
+      // Also vibrate if possible (this doesn't create a sound)
+      this.vibrate();
+      
+      // Call any callbacks that might be waiting
+      return true;
+    } else {
+      // App is in background or closed, use a full notification approach
+      // In this case, we'll use a silent notification and handle sound ourselves
+      
+      // Play sound first before showing notification
+      // This prevents the notification sound from playing in addition to our custom sound
+      const soundResult = await this.playSound();
+      
+      // Then do notification (with silent flag to prevent default sound)
+      const notificationResult = await Promise.allSettled([
+        this.showServiceWorkerNotification(teaName, true),  // true = silent
+        this.showRegularNotification(teaName, true)        // true = silent
+      ]);
+      
+      // Always try to vibrate
+      this.vibrate();
+      
+      // Log results for debugging
+      this.log(`Sound played: ${soundResult}`);
+      notificationResult.forEach((result, index) => {
+        const methods = ['ServiceWorker Notification', 'Regular Notification'];
+        if (result.status === 'fulfilled') {
+          this.log(`${methods[index]}: ${result.value ? 'Success' : 'Failed'}`);
+        } else {
+          this.log(`${methods[index]}: Error - ${result.reason}`);
+        }
+      });
+      
+      // Return true if any method succeeded
+      return soundResult || notificationResult.some(r => r.status === 'fulfilled' && r.value === true);
+    }
   }
 
   // Try to show notification via service worker
-  async showServiceWorkerNotification(teaName) {
+  async showServiceWorkerNotification(teaName, silent = false) {
     if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
       this.log('No active service worker controller');
       return false;
     }
     
     try {
-      this.log('Using service worker for notification');
+      this.log(`Using service worker for notification (silent: ${silent})`);
       
       // Send message to service worker
       navigator.serviceWorker.controller.postMessage({
         type: 'TIMER_COMPLETE',
-        teaName: teaName
+        teaName: teaName,
+        silent: silent
       });
       
       return true;
@@ -218,7 +240,7 @@ class NotificationService {
   }
 
   // Show a direct notification (fallback)
-  async showRegularNotification(teaName) {
+  async showRegularNotification(teaName, silent = false) {
     try {
       // Make sure permissions are initialized
       const hasPermission = await this.init();
@@ -227,14 +249,14 @@ class NotificationService {
         return false;
       }
       
-      this.log('Creating regular notification');
+      this.log(`Creating regular notification (silent: ${silent})`);
       const notification = new Notification('Tea Timer', {
         body: `Your ${teaName || 'tea'} is ready!`,
         icon: './assets/icons/apple-touch-icon.png',
         tag: 'tea-timer-notification',
         renotify: true,
         requireInteraction: true,
-        silent: false // Ensure sound can play
+        silent: silent // Set silent flag based on parameter
       });
       
       // Handle click on notification

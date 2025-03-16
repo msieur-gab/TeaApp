@@ -262,7 +262,6 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Handle messages from the client - Most importantly tea timer notifications
 self.addEventListener('message', (event) => {
   if (!event.data) return;
   
@@ -270,8 +269,9 @@ self.addEventListener('message', (event) => {
   if (event.data.type === 'TIMER_COMPLETE') {
     const title = 'Tea Timer';
     const teaName = event.data.teaName || 'tea';
+    const silent = event.data.silent === true; // Get silent flag from message
     
-    console.log('[Service Worker] Showing notification for tea:', teaName);
+    console.log(`[Service Worker] Showing notification for tea: ${teaName} (silent: ${silent})`);
     
     // Show a notification with maximum compatibility options
     self.registration.showNotification(title, {
@@ -283,7 +283,7 @@ self.addEventListener('message', (event) => {
       renotify: true,
       timestamp: Date.now(),
       requireInteraction: true,
-      silent: false, // Explicitly set to false to ensure sound plays
+      silent: silent, // Use the silent flag from the message
       actions: [
         {
           action: 'open',
@@ -294,15 +294,18 @@ self.addEventListener('message', (event) => {
       console.log('[Service Worker] Notification shown successfully');
       
       // After showing notification, prompt clients to play sound directly
-      // This serves as a backup mechanism for sound playback
-      self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          client.postMessage({
-            type: 'PLAY_NOTIFICATION_SOUND',
-            timestamp: Date.now()
+      // BUT ONLY if we're showing a silent notification
+      // Otherwise we'd have double sound
+      if (silent) {
+        self.clients.matchAll().then(clients => {
+          clients.forEach(client => {
+            client.postMessage({
+              type: 'PLAY_NOTIFICATION_SOUND',
+              timestamp: Date.now()
+            });
           });
         });
-      });
+      }
     }).catch(error => {
       console.error('[Service Worker] Failed to show notification:', error);
     });
