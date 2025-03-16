@@ -289,15 +289,26 @@ class TimerService {
   
   // Notify all complete callbacks
   notifyCompleteCallbacks() {
-    // Delegate notification to the notification service
-    notificationService.notifyTeaReady(this.teaName);
+    // Play sound immediately (for maximum responsiveness)
+    this.playCompletionSound();
     
+    // Delegate notification to the notification service
+    // Send notifications in parallel with callbacks
+    const notificationPromise = notificationService.notifyTeaReady(this.teaName);
+    
+    // Call the callbacks immediately (don't wait for notification)
     this.onCompleteCallbacks.forEach(callback => {
       try {
         callback();
       } catch (error) {
         console.error('Error in timer complete callback:', error);
       }
+    });
+    
+    // Add a fallback method in case the notification service fails
+    notificationPromise.catch(error => {
+      console.error('Notification failed, attempting fallback:', error);
+      this.playCompletionSound(); // Try sound again as fallback
     });
   }
   
@@ -311,6 +322,34 @@ class TimerService {
       }
     });
   }
+
+  // Add this new method to ensure sound plays
+playCompletionSound() {
+  try {
+    // Create a direct audio element for maximum compatibility
+    const audio = new Audio('./assets/sounds/notification.mp3');
+    audio.volume = 1.0;
+    
+    // Try to play immediately
+    const playPromise = audio.play();
+    
+    // Handle promise if supported
+    if (playPromise !== undefined) {
+      playPromise.catch(error => {
+        console.warn('Primary sound play failed, trying fallback:', error);
+        
+        // Try ogg format as fallback
+        const fallbackAudio = new Audio('./assets/sounds/notification.ogg');
+        fallbackAudio.volume = 1.0;
+        fallbackAudio.play().catch(fallbackError => {
+          console.error('Fallback sound also failed:', fallbackError);
+        });
+      });
+    }
+  } catch (error) {
+    console.error('Error playing completion sound:', error);
+  }
+}
   
   // Clean up resources
   destroy() {

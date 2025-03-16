@@ -7,128 +7,167 @@ class NotificationService {
     this.sound = null;
     this.lastNotificationTime = 0;
     this.notificationDedupeInterval = 2000; // 2 seconds deduplication window
+    this.isLogging = true; // Enable detailed logging
+  }
+
+  // Helper for logging
+  log(message) {
+    if (this.isLogging) {
+      console.log(`[NotificationService] ${message}`);
+    }
   }
 
   // Initialize the notification service
   async init() {
     // Check if notifications are supported
     if (!('Notification' in window)) {
-      console.warn('Notifications are not supported in this browser');
+      this.log('Notifications are not supported in this browser');
       return false;
     }
     
     // Request permission if not already granted
     if (Notification.permission !== 'granted' && !this.hasRequestedPermission) {
+      this.log('Requesting notification permission');
       this.hasRequestedPermission = true;
-      const permission = await Notification.requestPermission();
-      return permission === 'granted';
+      try {
+        const permission = await Notification.requestPermission();
+        this.log(`Permission response: ${permission}`);
+        return permission === 'granted';
+      } catch (error) {
+        this.log(`Error requesting permission: ${error.message}`);
+        return false;
+      }
     }
     
+    this.log(`Current notification permission: ${Notification.permission}`);
     return Notification.permission === 'granted';
+  }
+
+  // Preload sound for better responsiveness
+  async preloadSound() {
+    try {
+      if (!this.sound) {
+        this.log('Preloading notification sound');
+        this.sound = new Audio('./assets/sounds/notification.mp3');
+        
+        // Set up error handler
+        this.sound.onerror = (e) => {
+          this.log(`Error with primary sound: ${e.message}, trying fallback`);
+          this.sound = new Audio('./assets/sounds/notification.ogg');
+        };
+        
+        // Preload the sound
+        this.sound.preload = 'auto';
+        
+        // Try to load it
+        try {
+          await this.sound.load();
+          this.log('Sound preloaded successfully');
+        } catch (loadError) {
+          this.log(`Error preloading sound: ${loadError.message}`);
+        }
+      }
+    } catch (e) {
+      this.log(`Error setting up sound: ${e.message}`);
+    }
   }
 
   // Main method to notify users that tea is ready
   async notifyTeaReady(teaName) {
+    this.log(`Notification requested for tea: ${teaName}`);
+    
     // Check if we've already sent a notification recently
     const now = Date.now();
     if (now - this.lastNotificationTime < this.notificationDedupeInterval) {
-      console.log('Notification already sent recently, skipping duplicate');
+      this.log('Notification already sent recently, skipping duplicate');
       return true;
     }
     
     this.lastNotificationTime = now;
     
-    // Choose notification method based on page visibility
-    if (document.visibilityState === 'visible') {
-      // If page is visible, just play sound and vibrate - no visual notification
-      return this.notifyActiveApp(teaName);
-    } else {
-      // If page is hidden, use full notification
-      return this.notifyInactiveApp(teaName);
-    }
-  }
-  
-  // Notification when app is in focus (sound only)
-  async notifyActiveApp(teaName) {
-    console.log(`Tea ${teaName} ready - app is active, playing sound only`);
-    
-    const results = await Promise.all([
+    // Try all notification methods for maximum reliability
+    const results = await Promise.allSettled([
+      this.showServiceWorkerNotification(teaName),
+      this.showRegularNotification(teaName),
       this.playSound(),
       this.vibrate()
     ]);
     
-    return results.some(result => result);
-  }
-  
-  // Notification when app is in background
-  async notifyInactiveApp(teaName) {
-    console.log(`Tea ${teaName} ready - app is inactive, using full notification`);
+    // Log results for debugging
+    results.forEach((result, index) => {
+      const methods = ['ServiceWorker Notification', 'Regular Notification', 'Sound', 'Vibration'];
+      if (result.status === 'fulfilled') {
+        this.log(`${methods[index]}: ${result.value ? 'Success' : 'Failed'}`);
+      } else {
+        this.log(`${methods[index]}: Error - ${result.reason}`);
+      }
+    });
     
-    const results = await Promise.all([
-      this.showVisualNotification(teaName),
-      this.playSound(),
-      this.vibrate()
-    ]);
-    
-    return results.some(result => result);
+    // Return true if any method succeeded
+    return results.some(r => r.status === 'fulfilled' && r.value === true);
   }
 
-  // Show a visual notification (through service worker or direct)
-  async showVisualNotification(teaName) {
-    // Make sure permissions are initialized
-    const hasPermission = await this.init();
-    if (!hasPermission) {
-      console.warn('Notification permission not granted');
+  // Try to show notification via service worker
+  async showServiceWorkerNotification(teaName) {
+    if (!('serviceWorker' in navigator)) {
+      this.log('Service Worker not supported');
       return false;
     }
-
+    
     try {
-      // Try to use service worker for more reliable notifications
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        // Send message to service worker to show notification
-        // Set silent: true to prevent default notification sound
+      // Check if we have an active service worker
+      if (navigator.serviceWorker.controller) {
+        this.log('Using service worker for notification');
+        
+        // Create and show a notification channel
         navigator.serviceWorker.controller.postMessage({
           type: 'TIMER_COMPLETE',
-          teaName: teaName,
-          silent: true // Tell service worker to disable default sound
+          teaName: teaName
         });
+        
         return true;
       } else {
-        // Fall back to regular notification
-        return this.showRegularNotification(teaName);
+        this.log('No active service worker controller');
+        return false;
       }
     } catch (error) {
-      console.error('Failed to show service worker notification:', error);
-      // Try regular notification as fallback
-      return this.showRegularNotification(teaName);
+      this.log(`Service worker notification error: ${error.message}`);
+      return false;
     }
   }
 
-  // Show a notification without service worker
-  showRegularNotification(teaName) {
+  // Show a direct notification (fallback)
+  async showRegularNotification(teaName) {
     try {
-      if (Notification.permission === 'granted') {
-        const notification = new Notification('Tea Timer', {
-          body: `Your ${teaName || 'tea'} is ready!`,
-          icon: './assets/icons/apple-touch-icon.png',
-          tag: 'tea-timer-notification',
-          renotify: true,
-          requireInteraction: true,
-          silent: true // Disable default notification sound
-        });
-        
-        notification.onclick = () => {
-          window.focus();
-          notification.close();
-        };
-        
-        return true;
+      // Make sure permissions are initialized
+      const hasPermission = await this.init();
+      if (!hasPermission) {
+        this.log('Regular notification failed - no permission');
+        return false;
       }
+      
+      this.log('Creating regular notification');
+      const notification = new Notification('Tea Timer', {
+        body: `Your ${teaName || 'tea'} is ready!`,
+        icon: './assets/icons/apple-touch-icon.png',
+        tag: 'tea-timer-notification',
+        renotify: true,
+        requireInteraction: true,
+        // Do not set silent: true here to ensure sound plays in some browsers
+      });
+      
+      // Handle click on notification
+      notification.onclick = () => {
+        this.log('Notification clicked');
+        window.focus();
+        notification.close();
+      };
+      
+      return true;
     } catch (error) {
-      console.error('Failed to create fallback notification:', error);
+      this.log(`Regular notification error: ${error.message}`);
+      return false;
     }
-    
-    return false;
   }
 
   // Play a sound notification
@@ -136,33 +175,63 @@ class NotificationService {
     try {
       // Create audio element if it doesn't exist yet
       if (!this.sound) {
-        this.sound = new Audio('./assets/sounds/notification.mp3');
-        
-        // Set up error handler
-        this.sound.onerror = () => {
-          console.warn('Error with primary sound, trying fallback');
-          this.sound = new Audio('./assets/sounds/notification.ogg');
-        };
-        
-        // Preload the sound if possible
-        if (this.sound.preload) {
-          this.sound.preload = 'auto';
-        }
+        await this.preloadSound();
+      }
+      
+      if (!this.sound) {
+        this.log('Sound object not available');
+        return false;
       }
       
       // Reset to start if it was already playing
       this.sound.currentTime = 0;
       
+      // Set volume to maximum
+      this.sound.volume = 1.0;
+      
       // Play the sound (returns a promise)
+      this.log('Playing notification sound');
       try {
-        await this.sound.play();
-        return true;
+        // Create a user interaction promise to handle browsers that require it
+        const playPromise = this.sound.play();
+        
+        if (playPromise !== undefined) {
+          await playPromise;
+          this.log('Sound played successfully');
+          return true;
+        } else {
+          this.log('Sound play() did not return a promise');
+          return true; // Assume it worked
+        }
       } catch (playError) {
-        console.warn('Could not play timer sound:', playError);
+        this.log(`Could not play timer sound: ${playError.message}`);
+        
+        // If it failed due to no user interaction, try a fallback approach
+        if (playError.name === 'NotAllowedError') {
+          this.log('Attempting fallback audio approach');
+          // Create a new audio context
+          try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+              const audioContext = new AudioContext();
+              const oscillator = audioContext.createOscillator();
+              oscillator.type = 'sine';
+              oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 note
+              oscillator.connect(audioContext.destination);
+              oscillator.start();
+              oscillator.stop(audioContext.currentTime + 0.5); // Play for 0.5 seconds
+              this.log('Fallback audio played');
+              return true;
+            }
+          } catch (fallbackError) {
+            this.log(`Fallback audio failed: ${fallbackError.message}`);
+          }
+        }
+        
         return false;
       }
     } catch (e) {
-      console.warn('Error setting up sound:', e);
+      this.log(`Error playing sound: ${e.message}`);
       return false;
     }
   }
@@ -172,11 +241,14 @@ class NotificationService {
     if ('vibrate' in navigator) {
       try {
         // Pulse pattern: 200ms vibration, 100ms pause, 200ms vibration
-        navigator.vibrate([200, 100, 200]);
+        this.log('Triggering vibration');
+        navigator.vibrate([200, 100, 200, 100, 200]);
         return true;
       } catch (e) {
-        console.warn('Error vibrating device:', e);
+        this.log(`Error vibrating device: ${e.message}`);
       }
+    } else {
+      this.log('Vibration not supported');
     }
     return false;
   }
@@ -184,4 +256,10 @@ class NotificationService {
 
 // Create and export a singleton instance
 const notificationService = new NotificationService();
+
+// Preload sound on page load
+window.addEventListener('load', () => {
+  notificationService.preloadSound();
+});
+
 export default notificationService;

@@ -229,58 +229,65 @@ self.addEventListener('message', (event) => {
   if (event.data.type === 'TIMER_COMPLETE') {
     const title = 'Tea Timer';
     const teaName = event.data.teaName || 'tea';
-    const silent = event.data.silent || false;
     
-    // Show a notification with consistent format
+    console.log('[Service Worker] Showing notification for tea:', teaName);
+    
+    // Show a notification with maximum compatibility options
     self.registration.showNotification(title, {
       body: `Your ${teaName} is ready!`,
       icon: './assets/icons/icon-192x192.png',
       badge: './assets/icons/icon-72x72.png',
-      vibrate: [200, 100, 200],
+      vibrate: [200, 100, 200, 100, 200],
       tag: 'tea-timer-notification',
       renotify: true,
       timestamp: Date.now(),
       requireInteraction: true,
-      silent: silent, // Use the silent flag from the message
+      // Not setting silent to true to ensure sound can play
       actions: [
         {
           action: 'open',
           title: 'Open App'
         }
       ]
+    }).then(() => {
+      console.log('[Service Worker] Notification shown successfully');
+    }).catch(error => {
+      console.error('[Service Worker] Failed to show notification:', error);
     });
   }
 });
 
 // Handle notification action clicks
 self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Notification click received:', event.notification.tag);
+  
+  // Close the notification
+  event.notification.close();
+  
+  // Handle different notification actions
   const notificationAction = event.action;
-  const notification = event.notification;
   
-  notification.close();
-  
-  if (notificationAction === 'open' || !notificationAction) {
-    // Focus on or open a client window
-    event.waitUntil(
-      clients.matchAll({
-        type: 'window',
-        includeUncontrolled: true
-      })
-      .then((clientList) => {
-        // Try to focus an existing window
-        for (const client of clientList) {
-          if (client.url.includes('/TeaApp/') && 'focus' in client) {
-            return client.focus();
-          }
+  // Focus the app window regardless of action
+  // (default action if no specific action clicked)
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    })
+    .then((clientList) => {
+      // Try to focus an existing window
+      for (const client of clientList) {
+        if (client.url.includes('/TeaApp/') && 'focus' in client) {
+          return client.focus();
         }
-        
-        // If no existing window, open a new one
-        if (clients.openWindow) {
-          return clients.openWindow('./');
-        }
-      })
-    );
-  }
+      }
+      
+      // If no existing window, open a new one
+      if (clients.openWindow) {
+        return clients.openWindow('./');
+      }
+    })
+  );
 });
 
 // Handle periodic background sync for PWA

@@ -5,6 +5,7 @@ import teaDB from './db.js';
 import './components/tea-card.js';
 import './components/tea-timer.js';
 import './components/tea-menu.js';
+import notificationService from './services/notification-service.js';
 
 class TeaApp {
   constructor() {
@@ -41,7 +42,7 @@ class TeaApp {
   }
   
   async init() {
-    // Check for required permissions
+    // Check for required permissions - moved to the beginning for early prompting
     await this.checkNotificationPermission();
     
     // Initialize NFC handler
@@ -59,14 +60,60 @@ class TeaApp {
     // Load categories
     await this.loadCategories();
     
+    // Preload notification sounds for better responsiveness
+    this.preloadNotificationSounds();
+    
     console.log('Tea app initialized');
   }
   
+  // Improved notification permission handling
   async checkNotificationPermission() {
     if ('Notification' in window) {
+      // Log current status
+      console.log('Current notification permission:', Notification.permission);
+      
       if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        await Notification.requestPermission();
+        try {
+          // Show a message explaining why we need notification permission
+          this.showMessage('Please allow notifications for timer alerts', 'info');
+          
+          // Request permission
+          const permission = await Notification.requestPermission();
+          console.log('Notification permission response:', permission);
+          
+          if (permission === 'granted') {
+            this.showMessage('Notifications enabled for timer alerts', 'success');
+          } else {
+            this.showMessage('Notifications disabled. Timer alerts may not work when app is in background.', 'warning');
+          }
+        } catch (error) {
+          console.error('Error requesting notification permission:', error);
+        }
       }
+    } else {
+      console.warn('Notifications not supported in this browser');
+      this.showMessage('Notifications not supported in this browser. Timer functionality may be limited.', 'warning');
+    }
+  }
+  
+  // Preload sounds to improve playback reliability
+  preloadNotificationSounds() {
+    try {
+      // Create audio elements for both formats
+      const mp3Sound = new Audio('./assets/sounds/notification.mp3');
+      const oggSound = new Audio('./assets/sounds/notification.ogg');
+      
+      // Set to preload
+      mp3Sound.preload = 'auto';
+      oggSound.preload = 'auto';
+      
+      // Try to load
+      mp3Sound.load();
+      oggSound.load();
+      
+      console.log('Notification sounds preloaded');
+    } catch (error) {
+      console.warn('Error preloading notification sounds:', error);
     }
   }
   
@@ -141,32 +188,32 @@ class TeaApp {
       });
     }
     
-// Handle responsive layout changes
-window.addEventListener('resize', this.handleResponsiveLayout.bind(this));
+    // Handle responsive layout changes
+    window.addEventListener('resize', this.handleResponsiveLayout.bind(this));
+      
+    // Initial layout setup
+    this.handleResponsiveLayout();
+    
+    // Handle back button for detail views
+    window.addEventListener('popstate', this.handlePopState.bind(this));
+  }
   
-// Initial layout setup
-this.handleResponsiveLayout();
-
-// Handle back button for detail views
-window.addEventListener('popstate', this.handlePopState.bind(this));
-}
-
-// Add a new method to handle responsive layout changes
-handleResponsiveLayout() {
-  const isMobile = window.innerWidth < 768;
-  
-  // Adjust main content area margins based on screen size
-  const contentArea = document.querySelector('.content-area');
-  if (contentArea) {
-    if (!isMobile) {
-      // On desktop, give space for the menu
-      contentArea.style.marginLeft = '200px';
-    } else {
-      // On mobile, use full width
-      contentArea.style.marginLeft = '0';
+  // Add a new method to handle responsive layout changes
+  handleResponsiveLayout() {
+    const isMobile = window.innerWidth < 768;
+    
+    // Adjust main content area margins based on screen size
+    const contentArea = document.querySelector('.content-area');
+    if (contentArea) {
+      if (!isMobile) {
+        // On desktop, give space for the menu
+        contentArea.style.marginLeft = '200px';
+      } else {
+        // On mobile, use full width
+        contentArea.style.marginLeft = '0';
+      }
     }
   }
-}
   
   async loadTeas() {
     try {
