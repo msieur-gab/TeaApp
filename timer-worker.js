@@ -1,5 +1,6 @@
 // timer-worker.js
-// An optimized timer worker that is more accurate across sleep/wake cycles
+// This worker uses the system time to ensure accurate timing
+// even if the device goes to sleep mode or the app is in the background
 
 let timerInterval;
 let targetTime;
@@ -42,6 +43,9 @@ self.onmessage = function(e) {
 };
 
 function startTimer(duration, name = 'tea') {
+  // Validate inputs
+  duration = Number.isFinite(duration) && duration > 0 ? duration : 0;
+  
   timeRemaining = duration;
   originalDuration = duration;
   targetTime = Date.now() + (duration * 1000);
@@ -128,8 +132,11 @@ function resumeTimer() {
 
 function resetTimer(duration) {
   clearInterval(timerInterval);
-  timeRemaining = duration || originalDuration;
-  originalDuration = timeRemaining;
+  
+  // Use provided duration or fall back to original
+  const validDuration = Number.isFinite(duration) && duration > 0 ? duration : originalDuration;
+  timeRemaining = validDuration;
+  originalDuration = validDuration;
   isPaused = true;
   
   // Notify main thread of reset
@@ -153,12 +160,26 @@ function stopTimer() {
 }
 
 function addTime(seconds) {
+  // Validate input
+  const validSeconds = Number.isFinite(seconds) ? seconds : 0;
+  
   // Add time to the current timer
   if (isPaused) {
-    timeRemaining += seconds;
+    timeRemaining += validSeconds;
   } else {
-    targetTime += seconds * 1000;
+    targetTime += validSeconds * 1000;
     timeRemaining = Math.max(0, Math.round((targetTime - Date.now()) / 1000));
+  }
+  
+  // If adding time to a completed timer, we should resume it
+  if (timeRemaining > 0 && isPaused) {
+    // Only auto-resume if it was previously finished (at 0)
+    const wasFinished = timeRemaining === validSeconds;
+    
+    if (wasFinished) {
+      resumeTimer();
+      return; // resumeTimer already sends an update message
+    }
   }
   
   // Notify main thread of the time change
