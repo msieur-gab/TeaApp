@@ -4,6 +4,7 @@
 class NotificationService {
   constructor() {
     this.hasRequestedPermission = false;
+    this.hasRequestedAudioPermission = false;
     this.sound = null;
     this.audioContext = null;
     this.lastNotificationTime = 0;
@@ -67,8 +68,76 @@ class NotificationService {
       
       // Also try to preload sounds now that we have user interaction
       this.preloadSound();
+      
+      // This is a good time to request sound permission if we haven't yet
+      if (!this.hasRequestedAudioPermission) {
+        this.requestAudioPermission();
+      }
     } catch (error) {
       this.log(`Error unlocking audio: ${error.message}`);
+    }
+  }
+
+  // Request audio permission separately (like we do for notifications)
+  async requestAudioPermission() {
+    if (this.hasRequestedAudioPermission) return;
+    
+    this.hasRequestedAudioPermission = true;
+    this.log('Requesting audio permission');
+    
+    try {
+      // Try to play a silent sound to request permission
+      const audio = new Audio();
+      audio.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1TSS0UAAAAPAAADTGF2ZjU4LjIwLjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//WreyTRUoAWgBgkOAGbZHBgG1OF6zM82DWbZaUmMBptgQhGjsyYqc9ae9XFz280948NMBWInljyzsNRFLPWdnZGWrddDsjK1unuSrVN9jJsK8KuQtQCtMBjCEtImISdNKJOopIpBFpNSMbIHCSRpRR5iakjTiyzLhchUUBwCgyKiweBv/7UsQbg8isVNoMPMjAAAA0gAAABEVFGmgqK////kSZQ7KAgGwAAAH///R5QbCUQEgAAIQoe5zO6//9bVs9yXqQCgAAAVcMW1trGjjRscDUFAgEZCMZVZDIpmSKvaa39zX+dDf95V+DfNjoDFGmk0OhtOYolF0t7GH////4Y0I2H3fxoLlAoAAAKnGLm1vGjn0ImdBUFQZEZRlSyCRTbKc/u9IqX/SRL5tKbXc7N804m6lvasvva7Gxv///+CwIQxhfSgLlAoAAADI2bFltWODzGzyVxS/7UsQVA8f0SZgqYfcIAAANIAAAAQ5DiukxWNGgmm/uZf9Q76Tq0udDHykYY6kTyyLGBQD8LsNB8Pv///8urkYY6iQQA2AAAAHGmrLaschzI2ShRDjbke5TcGxpECr/1Kif+n7VufnY2hkl7gdmnQwFAMwuBmKAZ2v///+CYQABh/QgALAAAAA0MzpMKpUDLIXXFClDOk0nAoGs////CoLsVEK2e8z5v///wJpAC4AAz//tSxAGDxiRKniplM5IAABpAAAAEAAADQAB//QAAAWmrrrDNjmRKpWmKlAZEOQ2I2JCZv///9Pv8NB5/3Ob///8bUAFwAAAAABOgAJn//oAAAOYpmrGWhymRdUK21EYESUM6JCVUPf///YQ/hoPP+fOX///43oALgAAAAABQgAM3+tAAAABNjNS5jis9t1ybQlkk6A0IURmZCRY9///pE/w2Hn/fP//7UsQBA8WESZYqZTOSAAAaQAAAAf///G9AA4AAAAAAUoAB//6UAAXHDIuYmHJrjgUh0HJE7IUBkRFEhIie///0qv4bDz/v/L///+CAABwAAA=';
+      audio.volume = 0.01; // Very quiet
+      
+      // Try to play
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        await playPromise;
+        // If we get here, permission was granted
+        this.log('Audio permission granted');
+        
+        // Show a small notification to the user
+        this.showMessage('Sound notifications enabled');
+        
+        return true;
+      }
+    } catch (error) {
+      this.log(`Audio permission request failed: ${error.message}`);
+      
+      // Show a helpful message
+      this.showMessage('Please enable sound for timer alerts');
+      
+      return false;
+    }
+  }
+  
+  // Helper to show messages to the user
+  showMessage(message) {
+    // See if there's a message container
+    const container = document.getElementById('message-container');
+    if (container) {
+      // Create a message element
+      const messageEl = document.createElement('div');
+      messageEl.className = 'message message-info';
+      messageEl.textContent = message;
+      
+      // Add a close button
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'message-close';
+      closeBtn.innerHTML = '&times;';
+      closeBtn.addEventListener('click', () => messageEl.remove());
+      messageEl.appendChild(closeBtn);
+      
+      // Add to container
+      container.appendChild(messageEl);
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => messageEl.remove(), 5000);
+    } else {
+      // Fallback to alert if no container
+      console.log(`Message: ${message}`);
     }
   }
 
@@ -184,13 +253,10 @@ class NotificationService {
       return true;
     } else {
       // App is in background or closed, use a full notification approach
-      // In this case, we'll use a silent notification and handle sound ourselves
-      
       // Play sound first before showing notification
-      // This prevents the notification sound from playing in addition to our custom sound
       const soundResult = await this.playSound();
       
-      // Then do notification (with silent flag to prevent default sound)
+      // Then show a silent notification
       const notificationResult = await Promise.allSettled([
         this.showServiceWorkerNotification(teaName, true),  // true = silent
         this.showRegularNotification(teaName, true)        // true = silent
