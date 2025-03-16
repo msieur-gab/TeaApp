@@ -1,5 +1,7 @@
 // scripts/components/tea-timer.js
 
+import timerService from '../services/timer-service.js';
+
 class TeaTimer extends HTMLElement {
   constructor() {
     super();
@@ -7,11 +9,8 @@ class TeaTimer extends HTMLElement {
     
     // State
     this.isActive = false;
-    this.timeRemaining = 0;
-    this.originalTime = 0;
-    this.timerInterval = null;
     this.teaData = null;
-    this.brewStyle = 'gongfu'; // 'western' or 'gongfu'
+    this.brewStyle = 'western'; // 'western' or 'gongfu'
     this.currentInfusion = 1;
     
     // Touch handling
@@ -23,11 +22,33 @@ class TeaTimer extends HTMLElement {
     
     // Animation properties
     this.animationInProgress = false;
+    
+    // Bind timer service callback methods
+    this.handleTimerUpdate = this.handleTimerUpdate.bind(this);
+    this.handleTimerComplete = this.handleTimerComplete.bind(this);
+    this.handleTimerStateChange = this.handleTimerStateChange.bind(this);
+    
+    // Bind event handlers once
+    this.handleStartClick = this.startTimer.bind(this);
+    this.handleStopClick = this.stopTimer.bind(this);
+    this.handleResetClick = this.resetTimer.bind(this);
+    this.handleBrewStyleChange = this.handleBrewStyleChange.bind(this);
+    this.handlePrevInfusionClick = this.previousInfusion.bind(this);
+    this.handleNextInfusionClick = this.nextInfusion.bind(this);
+    this.handleDrawerClick = this.toggleDrawer.bind(this);
+    this.handleTouchStart = this.handleTouchStart.bind(this);
+    this.handleTouchMove = this.handleTouchMove.bind(this);
+    this.handleTouchEnd = this.handleTouchEnd.bind(this);
   }
 
   connectedCallback() {
     this.render();
     this.addEventListeners();
+    
+    // Register timer service callbacks
+    timerService.onUpdate(this.handleTimerUpdate);
+    timerService.onComplete(this.handleTimerComplete);
+    timerService.onStateChange(this.handleTimerStateChange);
     
     // Calculate drawer height after rendering
     setTimeout(() => {
@@ -40,7 +61,11 @@ class TeaTimer extends HTMLElement {
   
   disconnectedCallback() {
     this.removeEventListeners();
-    this.stopTimer();
+    
+    // Unregister timer service callbacks
+    timerService.offUpdate(this.handleTimerUpdate);
+    timerService.offComplete(this.handleTimerComplete);
+    timerService.offStateChange(this.handleTimerStateChange);
   }
   
   static get observedAttributes() {
@@ -54,52 +79,70 @@ class TeaTimer extends HTMLElement {
     }
   }
   
+  // Timer service event handlers
+  handleTimerUpdate(timeRemaining) {
+    this.updateTimerDisplay(timeRemaining, timerService.getOriginalDuration());
+  }
+  
+  handleTimerComplete() {
+    // For gongfu brewing, highlight infusion controls to start next
+    if (this.brewStyle === 'gongfu') {
+      const infusionControls = this.shadowRoot.querySelector('.infusion-controls');
+      if (infusionControls) {
+        infusionControls.classList.add('highlight');
+        
+        // Remove highlight after a few seconds
+        setTimeout(() => {
+          infusionControls.classList.remove('highlight');
+        }, 3000);
+      }
+    }
+  }
+  
+  handleTimerStateChange(state) {
+    this.updateButtonStates(state);
+  }
+  
   addEventListeners() {
-    const drawer = this.shadowRoot.querySelector('.timer-drawer');
-    if (!drawer) return;
-    
     // Drawer handle for click actions
     const handle = this.shadowRoot.querySelector('.drawer-handle');
     if (handle) {
-      handle.addEventListener('click', this.toggleDrawer.bind(this));
+      handle.addEventListener('click', this.handleDrawerClick);
       
       // Touch events for swipe actions
-      handle.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: true });
-      handle.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
-      handle.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: true });
+      handle.addEventListener('touchstart', this.handleTouchStart, { passive: true });
+      handle.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+      handle.addEventListener('touchend', this.handleTouchEnd, { passive: true });
     }
     
     // Button controls
-    this.shadowRoot.querySelector('.start-button')?.addEventListener('click', this.startTimer.bind(this));
-    this.shadowRoot.querySelector('.stop-button')?.addEventListener('click', this.stopTimer.bind(this));
-    this.shadowRoot.querySelector('.reset-button')?.addEventListener('click', this.resetTimer.bind(this));
+    this.shadowRoot.querySelector('.start-button')?.addEventListener('click', this.handleStartClick);
+    this.shadowRoot.querySelector('.stop-button')?.addEventListener('click', this.handleStopClick);
+    this.shadowRoot.querySelector('.reset-button')?.addEventListener('click', this.handleResetClick);
     
     // Brew style toggle
-    this.shadowRoot.querySelector('.brew-style-toggle')?.addEventListener('change', this.handleBrewStyleChange.bind(this));
+    this.shadowRoot.querySelector('.brew-style-toggle')?.addEventListener('change', this.handleBrewStyleChange);
     
     // Infusion controls
-    this.shadowRoot.querySelector('.prev-infusion-btn')?.addEventListener('click', this.previousInfusion.bind(this));
-    this.shadowRoot.querySelector('.next-infusion-btn')?.addEventListener('click', this.nextInfusion.bind(this));
+    this.shadowRoot.querySelector('.prev-infusion-btn')?.addEventListener('click', this.handlePrevInfusionClick);
+    this.shadowRoot.querySelector('.next-infusion-btn')?.addEventListener('click', this.handleNextInfusionClick);
   }
   
   removeEventListeners() {
-    const drawer = this.shadowRoot.querySelector('.timer-drawer');
-    if (!drawer) return;
-    
     const handle = this.shadowRoot.querySelector('.drawer-handle');
     if (handle) {
-      handle.removeEventListener('click', this.toggleDrawer.bind(this));
-      handle.removeEventListener('touchstart', this.handleTouchStart.bind(this));
-      handle.removeEventListener('touchmove', this.handleTouchMove.bind(this));
-      handle.removeEventListener('touchend', this.handleTouchEnd.bind(this));
+      handle.removeEventListener('click', this.handleDrawerClick);
+      handle.removeEventListener('touchstart', this.handleTouchStart);
+      handle.removeEventListener('touchmove', this.handleTouchMove);
+      handle.removeEventListener('touchend', this.handleTouchEnd);
     }
     
-    this.shadowRoot.querySelector('.start-button')?.removeEventListener('click', this.startTimer.bind(this));
-    this.shadowRoot.querySelector('.stop-button')?.removeEventListener('click', this.stopTimer.bind(this));
-    this.shadowRoot.querySelector('.reset-button')?.removeEventListener('click', this.resetTimer.bind(this));
-    this.shadowRoot.querySelector('.brew-style-toggle')?.removeEventListener('change', this.handleBrewStyleChange.bind(this));
-    this.shadowRoot.querySelector('.prev-infusion-btn')?.removeEventListener('click', this.previousInfusion.bind(this));
-    this.shadowRoot.querySelector('.next-infusion-btn')?.removeEventListener('click', this.nextInfusion.bind(this));
+    this.shadowRoot.querySelector('.start-button')?.removeEventListener('click', this.handleStartClick);
+    this.shadowRoot.querySelector('.stop-button')?.removeEventListener('click', this.handleStopClick);
+    this.shadowRoot.querySelector('.reset-button')?.removeEventListener('click', this.handleResetClick);
+    this.shadowRoot.querySelector('.brew-style-toggle')?.removeEventListener('change', this.handleBrewStyleChange);
+    this.shadowRoot.querySelector('.prev-infusion-btn')?.removeEventListener('click', this.handlePrevInfusionClick);
+    this.shadowRoot.querySelector('.next-infusion-btn')?.removeEventListener('click', this.handleNextInfusionClick);
   }
   
   // Touch event handlers
@@ -176,6 +219,7 @@ class TeaTimer extends HTMLElement {
     drawerElement.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
   }
   
+  // IMPORTANT: Keep this method for compatibility with app.js
   setTeaData(tea) {
     this.teaData = tea;
     
@@ -183,15 +227,37 @@ class TeaTimer extends HTMLElement {
     this.brewStyle = 'western';
     this.currentInfusion = 1;
     
-    // Parse brew time to seconds based on brewing style
-    this.setTimerForCurrentBrewStyle();
+    // Calculate brew time based on brewing style
+    const duration = this.calculateBrewDuration();
     
-    this.openDrawer();
+    // Update the timer service with initial duration 
+    // (but don't start it yet)
+    timerService.startTimer(duration, tea.name);
+    timerService.pauseTimer();
+    
     this.render();
   }
   
-  setTimerForCurrentBrewStyle() {
-    if (!this.teaData) return;
+  // IMPORTANT: Keep this method for compatibility with app.js
+  openDrawer() {
+    this.animationInProgress = true;
+    this.isActive = true;
+    
+    const drawerElement = this.shadowRoot.querySelector('.timer-drawer');
+    if (drawerElement) {
+      drawerElement.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
+      drawerElement.style.transform = 'translateY(0)';
+      
+      // After animation completes
+      setTimeout(() => {
+        this.animationInProgress = false;
+        this.render();
+      }, 300);
+    }
+  }
+  
+  calculateBrewDuration() {
+    if (!this.teaData) return 180; // Default 3 minutes
     
     let brewTime;
     
@@ -208,7 +274,7 @@ class TeaTimer extends HTMLElement {
         brewTime = `${baseGongfuTime}`;
       } else {
         // Add 5 seconds for each subsequent infusion
-        brewTime = `${baseGongfuTime + ((this.currentInfusion - 1) * 5)}`;
+        brewTime = `${parseInt(baseGongfuTime, 10) + ((this.currentInfusion - 1) * 5)}`;
       }
     }
     
@@ -217,36 +283,44 @@ class TeaTimer extends HTMLElement {
       // Check if time is in MM:SS format
       if (typeof brewTime === 'string' && brewTime.includes(':')) {
         const [minutes, seconds] = brewTime.split(':').map(part => parseInt(part, 10));
-        this.timeRemaining = (minutes * 60) + seconds;
+        return (minutes * 60) + seconds;
       } else {
         // Assume it's just seconds
-        this.timeRemaining = parseInt(brewTime, 10);
+        return parseInt(brewTime, 10);
       }
-      this.originalTime = this.timeRemaining;
     } else {
       // Default times if none specified
       if (this.brewStyle === 'western') {
-        this.timeRemaining = 180; // 3 minutes default for western
+        return 180; // 3 minutes default for western
       } else {
-        this.timeRemaining = 30; // 30 seconds default for gongfu
+        return 30; // 30 seconds default for gongfu
       }
-      this.originalTime = this.timeRemaining;
     }
-    
-    this.updateTimerDisplay();
   }
   
   handleBrewStyleChange(event) {
     this.brewStyle = event.target.checked ? 'gongfu' : 'western';
     this.currentInfusion = 1; // Reset to first infusion
-    this.setTimerForCurrentBrewStyle();
+    
+    // Update timer duration when brew style changes
+    const duration = this.calculateBrewDuration();
+    
+    // Update the timer with the new duration
+    timerService.startTimer(duration, this.teaData?.name);
+    timerService.pauseTimer();
+    
     this.render();
   }
   
   previousInfusion() {
     if (this.currentInfusion > 1) {
       this.currentInfusion--;
-      this.setTimerForCurrentBrewStyle();
+      
+      // Update timer for new infusion
+      const duration = this.calculateBrewDuration();
+      timerService.startTimer(duration, this.teaData?.name);
+      timerService.pauseTimer();
+      
       this.render();
     }
   }
@@ -255,7 +329,12 @@ class TeaTimer extends HTMLElement {
     // Cap at a reasonable number, e.g., 10 infusions
     if (this.currentInfusion < 10) {
       this.currentInfusion++;
-      this.setTimerForCurrentBrewStyle();
+      
+      // Update timer for new infusion
+      const duration = this.calculateBrewDuration();
+      timerService.startTimer(duration, this.teaData?.name);
+      timerService.pauseTimer();
+      
       this.render();
     }
   }
@@ -269,23 +348,6 @@ class TeaTimer extends HTMLElement {
       this.openDrawer();
     } else {
       this.closeDrawer();
-    }
-  }
-  
-  openDrawer() {
-    this.animationInProgress = true;
-    this.isActive = true;
-    
-    const drawerElement = this.shadowRoot.querySelector('.timer-drawer');
-    if (drawerElement) {
-      drawerElement.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
-      drawerElement.style.transform = 'translateY(0)';
-      
-      // After animation completes
-      setTimeout(() => {
-        this.animationInProgress = false;
-        this.render();
-      }, 300);
     }
   }
   
@@ -307,132 +369,20 @@ class TeaTimer extends HTMLElement {
     }
   }
   
+  // Timer control methods - using timer service
   startTimer() {
-    if (this.timerInterval) return; // Timer already running
+    if (!this.teaData) return;
     
-    this.timerInterval = setInterval(() => {
-      if (this.timeRemaining > 0) {
-        this.timeRemaining--;
-        this.updateTimerDisplay();
-      } else {
-        this.stopTimer();
-        this.timerCompleted();
-      }
-    }, 1000);
-    
-    this.updateButtonStates('running');
+    // Use the current calculated duration
+    timerService.resumeTimer();
   }
   
   stopTimer() {
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-      this.timerInterval = null;
-      this.updateButtonStates('stopped');
-    }
+    timerService.pauseTimer();
   }
   
   resetTimer() {
-    this.stopTimer();
-    this.timeRemaining = this.originalTime;
-    this.updateTimerDisplay();
-    this.updateButtonStates('reset');
-  }
-  
-timerCompleted() {
-    // Vibration feedback if supported
-    if ('vibrate' in navigator) {
-      navigator.vibrate([200, 100, 200]);
-    }
-    this.playCompletionSound();
-
-    // Enhanced notification handling
-    const showNotification = () => {
-      // Check if Notifications are supported
-      if (!('Notification' in window)) {
-        console.warn('Notifications not supported');
-        return;
-      }
-
-      // Request permission if not already granted
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          try {
-            // Create notification with more robust options
-            const notification = new Notification('Tea Timer', {
-              body: `Your ${this.teaData?.name || 'tea'} is ready!`,
-              icon: './assets/icons/apple-touch-icon.png', // Use a larger, more recognizable icon
-              tag: 'tea-timer-notification',
-              renotify: true,
-              requireInteraction: true // Keeps notification visible until dismissed
-            });
-
-            // Optional: Add click handler to bring app to foreground
-            notification.onclick = () => {
-              window.focus();
-              notification.close();
-            };
-          } catch (error) {
-            console.error('Failed to create notification:', error);
-          }
-        } else {
-          console.warn('Notification permission denied');
-        }
-      }).catch(error => {
-        console.error('Error requesting notification permission:', error);
-      });
-    };
-
-    // Attempt to show notification
-    showNotification();
-    
-    // Update button states
-    this.updateButtonStates('completed');
-    
-    // For gongfu brewing, offer to start next infusion
-    if (this.brewStyle === 'gongfu') {
-      const infusionControls = this.shadowRoot.querySelector('.infusion-controls');
-      if (infusionControls) {
-        infusionControls.classList.add('highlight');
-        
-        // Remove highlight after a few seconds
-        setTimeout(() => {
-          infusionControls.classList.remove('highlight');
-        }, 3000);
-      }
-    }
-  }
-
-  playCompletionSound() {
-    // Create audio element if it doesn't exist yet
-    if (!this.completionSound) {
-      this.completionSound = new Audio('./assets/sounds/notification.mp3');
-      
-      // Fallback to another format if MP3 isn't supported
-      this.completionSound.onerror = () => {
-        this.completionSound = new Audio('./assets/sounds/notification.ogg');
-      };
-    }
-    
-    // Try to play the sound
-    // The volume will be controlled by the device as requested
-    try {
-      // Reset to start if it was already playing
-      this.completionSound.currentTime = 0;
-      
-      // Play the sound (returns a promise)
-      const playPromise = this.completionSound.play();
-      
-      // Handle potential play() rejection (happens if user hasn't interacted with page yet)
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.warn('Could not play timer sound:', error);
-          // We don't need to handle this further as the notification and vibration
-          // will still alert the user
-        });
-      }
-    } catch (e) {
-      console.warn('Error playing sound:', e);
-    }
+    timerService.resetTimer();
   }
   
   formatTime(seconds) {
@@ -441,16 +391,16 @@ timerCompleted() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
   
-  updateTimerDisplay() {
+  updateTimerDisplay(timeRemaining, originalDuration) {
     const timerDisplay = this.shadowRoot.querySelector('.timer-display');
     if (!timerDisplay) return;
     
-    timerDisplay.textContent = this.formatTime(this.timeRemaining);
+    timerDisplay.textContent = this.formatTime(timeRemaining);
     
     // Update progress bar
     const progressBar = this.shadowRoot.querySelector('.timer-progress-bar');
-    if (progressBar && this.originalTime > 0) {
-      const progressPercent = (this.timeRemaining / this.originalTime) * 100;
+    if (progressBar && originalDuration > 0) {
+      const progressPercent = (timeRemaining / originalDuration) * 100;
       progressBar.style.width = `${progressPercent}%`;
       
       // Change color as time runs out
@@ -860,7 +810,7 @@ timerCompleted() {
             <div class="timer-progress-bar-container">
               <div class="timer-progress-bar"></div>
             </div>
-            <div class="timer-display">${this.formatTime(this.timeRemaining)}</div>
+            <div class="timer-display">${this.formatTime(timerService.getTimeRemaining())}</div>
           </div>
           
           <p class="timer-info">${teaInfo}</p>
@@ -875,8 +825,12 @@ timerCompleted() {
     `;
     
     this.addEventListeners();
-    this.updateTimerDisplay();
-    this.updateButtonStates(this.timerInterval ? 'running' : 'reset');
+    
+    // Update button states based on current timer state
+    this.updateButtonStates(timerService.isTimerRunning() ? 'running' : 'reset');
+    
+    // Update timer display initially
+    this.updateTimerDisplay(timerService.getTimeRemaining(), timerService.getOriginalDuration());
   }
 }
 

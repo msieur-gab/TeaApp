@@ -5,6 +5,7 @@ import teaDB from './db.js';
 import './components/tea-card.js';
 import './components/tea-timer.js';
 import './components/tea-menu.js';
+import notificationService from './services/notification-service.js';
 
 class TeaApp {
   constructor() {
@@ -41,7 +42,7 @@ class TeaApp {
   }
   
   async init() {
-    // Check for required permissions
+    // Check for required permissions - moved to the beginning for early prompting
     await this.checkNotificationPermission();
     
     // Initialize NFC handler
@@ -59,14 +60,126 @@ class TeaApp {
     // Load categories
     await this.loadCategories();
     
+    // Preload notification sounds for better responsiveness
+    this.preloadNotificationSounds();
+    
     console.log('Tea app initialized');
   }
+
+  // Initialize sound system
+initSoundSystem() {
+  // Listen for service worker messages about notifications
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'PLAY_NOTIFICATION_SOUND') {
+        console.log('Received sound play request from Service Worker');
+        // The notification service will handle this
+        import('./services/notification-service.js').then(module => {
+          const notificationService = module.default;
+          notificationService.playSound().catch(error => {
+            console.error('Error playing sound:', error);
+          });
+        });
+      }
+    });
+  }
   
+  // Try to unlock audio on user interaction
+  this.registerAudioUnlockEvents();
+}
+
+// Register events to unlock audio on user interaction
+registerAudioUnlockEvents() {
+  const unlockEvents = ['touchstart', 'touchend', 'mousedown', 'keydown', 'click'];
+  
+  // Create one handler
+  const unlockAudio = () => {
+    // Try to create a silent audio context to unlock audio
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        const audioContext = new AudioContext();
+        
+        // Create and play a silent sound
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        gainNode.gain.value = 0;  // Silent
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.start(0);
+        oscillator.stop(0.001);
+        
+        console.log('Audio context unlocked via user interaction');
+        
+        // Preload sounds via notification service
+        import('./services/notification-service.js').then(module => {
+          const notificationService = module.default;
+          notificationService.preloadSound();
+        });
+      }
+    } catch (error) {
+      console.warn('Error unlocking audio:', error);
+    }
+  };
+  
+  // Register for all events
+  unlockEvents.forEach(eventType => {
+    document.addEventListener(eventType, unlockAudio, { once: true });
+  });
+  
+  console.log('Audio unlock events registered');
+}
+
+  // Improved notification permission handling
   async checkNotificationPermission() {
     if ('Notification' in window) {
+      // Log current status
+      console.log('Current notification permission:', Notification.permission);
+      
       if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        await Notification.requestPermission();
+        try {
+          // Show a message explaining why we need notification permission
+          this.showMessage('Please allow notifications for timer alerts', 'info');
+          
+          // Request permission
+          const permission = await Notification.requestPermission();
+          console.log('Notification permission response:', permission);
+          
+          if (permission === 'granted') {
+            this.showMessage('Notifications enabled for timer alerts', 'success');
+          } else {
+            this.showMessage('Notifications disabled. Timer alerts may not work when app is in background.', 'warning');
+          }
+        } catch (error) {
+          console.error('Error requesting notification permission:', error);
+        }
       }
+    } else {
+      console.warn('Notifications not supported in this browser');
+      this.showMessage('Notifications not supported in this browser. Timer functionality may be limited.', 'warning');
+    }
+  }
+  
+  // Preload sounds to improve playback reliability
+  preloadNotificationSounds() {
+    try {
+      // Create audio elements for both formats
+      const mp3Sound = new Audio('./assets/sounds/notification.mp3');
+      const oggSound = new Audio('./assets/sounds/notification.ogg');
+      
+      // Set to preload
+      mp3Sound.preload = 'auto';
+      oggSound.preload = 'auto';
+      
+      // Try to load
+      mp3Sound.load();
+      oggSound.load();
+      
+      console.log('Notification sounds preloaded');
+    } catch (error) {
+      console.warn('Error preloading notification sounds:', error);
     }
   }
   
@@ -141,32 +254,32 @@ class TeaApp {
       });
     }
     
-// Handle responsive layout changes
-window.addEventListener('resize', this.handleResponsiveLayout.bind(this));
+    // Handle responsive layout changes
+    window.addEventListener('resize', this.handleResponsiveLayout.bind(this));
+      
+    // Initial layout setup
+    this.handleResponsiveLayout();
+    
+    // Handle back button for detail views
+    window.addEventListener('popstate', this.handlePopState.bind(this));
+  }
   
-// Initial layout setup
-this.handleResponsiveLayout();
-
-// Handle back button for detail views
-window.addEventListener('popstate', this.handlePopState.bind(this));
-}
-
-// Add a new method to handle responsive layout changes
-handleResponsiveLayout() {
-  const isMobile = window.innerWidth < 768;
-  
-  // Adjust main content area margins based on screen size
-  const contentArea = document.querySelector('.content-area');
-  if (contentArea) {
-    if (!isMobile) {
-      // On desktop, give space for the menu
-      contentArea.style.marginLeft = '200px';
-    } else {
-      // On mobile, use full width
-      contentArea.style.marginLeft = '0';
+  // Add a new method to handle responsive layout changes
+  handleResponsiveLayout() {
+    const isMobile = window.innerWidth < 768;
+    
+    // Adjust main content area margins based on screen size
+    const contentArea = document.querySelector('.content-area');
+    if (contentArea) {
+      if (!isMobile) {
+        // On desktop, give space for the menu
+        contentArea.style.marginLeft = '200px';
+      } else {
+        // On mobile, use full width
+        contentArea.style.marginLeft = '0';
+      }
     }
   }
-}
   
   async loadTeas() {
     try {
