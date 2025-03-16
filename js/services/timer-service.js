@@ -74,7 +74,10 @@ class TimerService {
         
       case 'complete':
         this.isRunning = false;
-        this.wakeLockService.releaseWakeLock();
+        
+        // Make sure to release wake lock when timer completes
+        this.ensureWakeLockReleased();
+        
         this.notifyUpdateCallbacks(0);
         this.notifyCompleteCallbacks();
         this.notifyStateChangeCallbacks('completed');
@@ -83,20 +86,29 @@ class TimerService {
       case 'paused':
       case 'stopped':
         this.isRunning = false;
-        this.wakeLockService.releaseWakeLock();
+        
+        // Release wake lock when timer is paused or stopped
+        this.ensureWakeLockReleased();
+        
         this.notifyUpdateCallbacks(this.timeRemaining);
         this.notifyStateChangeCallbacks('stopped');
         break;
         
       case 'resumed':
         this.isRunning = true;
+        
+        // Request wake lock when timer is resumed
         this.wakeLockService.requestWakeLock();
+        
         this.notifyStateChangeCallbacks('running');
         break;
         
       case 'reset':
         this.isRunning = false;
-        this.wakeLockService.releaseWakeLock();
+        
+        // Release wake lock when timer is reset
+        this.ensureWakeLockReleased();
+        
         this.notifyUpdateCallbacks(this.timeRemaining);
         this.notifyStateChangeCallbacks('reset');
         break;
@@ -105,9 +117,28 @@ class TimerService {
   
   // Handle page visibility changes
   handleVisibilityChange() {
-    if (document.visibilityState === 'visible' && this.isRunning) {
-      // Page is visible again, sync the timer
-      this.syncTimer();
+    if (document.visibilityState === 'visible') {
+      if (this.isRunning) {
+        // Page is visible again, sync the timer
+        this.syncTimer();
+      }
+      
+      // Force check wake lock state
+      this.wakeLockService.checkAndReleaseWakeLock(this.isRunning);
+    }
+  }
+  
+  // Make sure wake lock is released
+  async ensureWakeLockReleased() {
+    try {
+      await this.wakeLockService.releaseWakeLock();
+      
+      // Double-check after a short delay to make sure it was really released
+      setTimeout(() => {
+        this.wakeLockService.checkAndReleaseWakeLock(this.isRunning);
+      }, 500);
+    } catch (error) {
+      console.error('Error releasing wake lock:', error);
     }
   }
   
@@ -290,7 +321,7 @@ class TimerService {
       this.worker = null;
     }
     
-    this.wakeLockService.releaseWakeLock();
+    this.ensureWakeLockReleased();
     
     this.onUpdateCallbacks = [];
     this.onCompleteCallbacks = [];
