@@ -1,6 +1,6 @@
 // service-worker.js
 
-const CACHE_NAME = 'tea-timer-v0.4';
+const CACHE_NAME = 'tea-timer-v0.4.1';
 const URLS_TO_CACHE = [
   './',
   './index.html',
