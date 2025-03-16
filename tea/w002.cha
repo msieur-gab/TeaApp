@@ -1,0 +1,23 @@
+{
+  "name": "White Peony",
+  "category": "White",
+  "origin": "Fujian, China",
+  "description": "White Peony (Bai Mudan) is a classic white tea made from one bud and two leaves. Less delicate than Silver Needle but still prized for its complexity, it produces a medium-bodied golden infusion with a slightly fruity character and gentle sweetness.",
+  "brewTime": "4:00",
+  "temperature": "85°C",
+  "notes": "The taste evolves nicely through multiple infusions, with later steeps often revealing more woody and nutty notes.",
+  "tags": ["fruity", "sweet", "honey", "nutty", "woody"],
+  
+  "westernBrewTime": "4:00",
+  "westernTemperature": "85°C",
+  "westernLeafRatio": "2.5g per 200ml",
+  
+  "gongfuBrewTime": "45",
+  "gongfuTemperature": "90°C",
+  "gongfuLeafRatio": "5g per 100ml",
+  
+  "harvestDate": "Spring",
+  "processingMethod": "Minimal withering and drying",
+  "flavorProfile": ["apricot", "honey", "peach", "earth", "sweet hay"],
+  "caffeineLevel": "Low to Medium"
+}

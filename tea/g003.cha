@@ -1,0 +1,25 @@
+{
+  "name": "Ceremonial Matcha",
+  "category": "Green",
+  "origin": "Uji, Japan",
+  "description": "Matcha is a powdered green tea made from shade-grown tea leaves that are stone-ground into a fine powder. Unlike other teas, the entire leaf is consumed, providing a rich, complex flavor profile and concentrated nutrients.",
+  "brewTime": "N/A (whisked)",
+  "temperature": "80°C",
+  "notes": "Traditional preparation involves sifting the powder into a bowl, adding water, and whisking to a frothy consistency with a bamboo whisk (chasen). Ceremonial grade is meant to be enjoyed pure, without additions.",
+  "tags": ["umami", "sweet", "grassy", "creamy", "vegetal"],
+  
+  "westernBrewTime": "N/A",
+  "westernTemperature": "80°C",
+  "westernLeafRatio": "2g per 60ml water",
+  
+  "gongfuBrewTime": "N/A",
+  "gongfuTemperature": "N/A",
+  "gongfuLeafRatio": "N/A",
+  
+  "harvestDate": "Spring",
+  "processingMethod": "Shade-grown, steamed, dried, de-stemmed, stone-ground",
+  "flavorProfile": ["umami", "sweet", "bitter", "grassy", "creamy"],
+  "caffeineLevel": "High",
+  "storageInstructions": "Store in airtight container in refrigerator after opening. Best consumed within 4 weeks of opening.",
+  "ingredients": ["Powdered shade-grown green tea leaves"]
+}

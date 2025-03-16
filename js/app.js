@@ -4,16 +4,40 @@ import NFCHandler from './nfc-handler.js';
 import teaDB from './db.js';
 import './components/tea-card.js';
 import './components/tea-timer.js';
-import './components/category-menu.js';
+import './components/tea-menu.js';
 
 class TeaApp {
   constructor() {
     this.nfcHandler = null;
     this.teaCards = [];
     this.currentCategory = null;
+    this.teaFolder = 'tea/';
+    this.baseUrl = this.getBaseUrl();
     
     // Initialize the app
     this.init();
+  }
+  
+  getBaseUrl() {
+    // Extract the base URL of the current page (without filename and query parameters)
+    const url = window.location.href;
+    const urlObj = new URL(url);
+    
+    // Get the origin (protocol + hostname + port)
+    const origin = urlObj.origin;
+    
+    // Get the pathname and remove the filename part if present
+    let pathname = urlObj.pathname;
+    
+    // Remove index.html or any other file from the path
+    pathname = pathname.replace(/\/[^\/]*\.[^\/]*$/, '/');
+    
+    // Ensure the path ends with a slash
+    if (!pathname.endsWith('/')) {
+      pathname += '/';
+    }
+    
+    return origin + pathname;
   }
   
   async init() {
@@ -25,6 +49,9 @@ class TeaApp {
     
     // Initialize UI elements
     this.initUI();
+    
+    // Check if the URL contains tea parameters
+    this.checkUrlForTeaParams();
     
     // Load teas from database
     await this.loadTeas();
@@ -56,6 +83,37 @@ class TeaApp {
     });
   }
   
+  checkUrlForTeaParams() {
+    // Check if the current URL has tea parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.has('tea')) {
+      const teaFile = urlParams.get('tea');
+      const teaUrl = `${this.baseUrl}${this.teaFolder}${teaFile}`;
+      
+      // Process the tea file from URL
+      this.handleNFCRead(teaUrl);
+      
+      // Clean up the URL to avoid reprocessing on refresh
+      this.cleanupUrl();
+    } else if (urlParams.has('teaId')) {
+      const teaId = urlParams.get('teaId');
+      const teaUrl = `${this.baseUrl}${this.teaFolder}${teaId}.cha`; // Update to .cha extension
+      
+      // Process the tea file from URL
+      this.handleNFCRead(teaUrl);
+      
+      // Clean up the URL to avoid reprocessing on refresh
+      this.cleanupUrl();
+    }
+  }
+  
+  cleanupUrl() {
+    // Remove query parameters from URL to prevent reprocessing on refresh
+    const currentUrl = window.location.href.split('?')[0];
+    window.history.replaceState({}, document.title, currentUrl);
+  }
+  
   initUI() {
     // Get UI elements
     this.teaContainer = document.getElementById('tea-container');
@@ -75,20 +133,40 @@ class TeaApp {
       manualInputBtn.addEventListener('click', this.handleManualInput.bind(this));
     }
     
-    // Menu toggle button
+    // Menu toggle button - now directly interacts with the menu component
     const menuToggleBtn = document.getElementById('menu-toggle-btn');
-    if (menuToggleBtn) {
+    if (menuToggleBtn && this.categoryMenu) {
       menuToggleBtn.addEventListener('click', () => {
-        if (this.categoryMenu) {
-          // Toggle the menu open state via the web component
-          this.categoryMenu.toggleMenu();
-        }
+        this.categoryMenu.toggleMenu();
       });
     }
     
-    // Handle back button for detail views
-    window.addEventListener('popstate', this.handlePopState.bind(this));
+// Handle responsive layout changes
+window.addEventListener('resize', this.handleResponsiveLayout.bind(this));
+  
+// Initial layout setup
+this.handleResponsiveLayout();
+
+// Handle back button for detail views
+window.addEventListener('popstate', this.handlePopState.bind(this));
+}
+
+// Add a new method to handle responsive layout changes
+handleResponsiveLayout() {
+  const isMobile = window.innerWidth < 768;
+  
+  // Adjust main content area margins based on screen size
+  const contentArea = document.querySelector('.content-area');
+  if (contentArea) {
+    if (!isMobile) {
+      // On desktop, give space for the menu
+      contentArea.style.marginLeft = '200px';
+    } else {
+      // On mobile, use full width
+      contentArea.style.marginLeft = '0';
+    }
   }
+}
   
   async loadTeas() {
     try {
@@ -149,6 +227,8 @@ class TeaApp {
       this.showLoader();
       this.showMessage('Tea tag detected! Loading tea information...', 'info');
       
+      console.log('Processing tea URL:', url);
+      
       // Fetch the JSON data from the URL
       const teaData = await this.fetchTeaData(url);
       
@@ -179,13 +259,59 @@ class TeaApp {
   
   async fetchTeaData(url) {
     try {
-      const response = await fetch(url);
+      // First, check if the URL is valid
+      let validUrl = url;
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+      try {
+        // Try to construct a valid URL object to validate it
+        new URL(url);
+      } catch (urlError) {
+        // If URL is invalid, it might be a relative path or missing the protocol
+        console.warn('Invalid URL format:', url);
+        
+        // Try to fix the URL by prepending the base URL
+        validUrl = this.getBaseUrl() + (url.startsWith('/') ? url.slice(1) : url);
+        console.log('Trying to fix URL:', validUrl);
       }
       
-      const data = await response.json();
+      // Handle CORS issues by adding a fallback mechanism
+      const fetchWithFallback = async (primaryUrl) => {
+        try {
+          console.log('Fetching tea data from:', primaryUrl);
+          const response = await fetch(primaryUrl);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          
+          return await response.json();
+        } catch (primaryError) {
+          console.warn('Primary fetch failed:', primaryError);
+          
+          // Try to extract the filename and use local path as fallback
+          try {
+            const filename = primaryUrl.split('/').pop();
+            // Make sure we're using the correct extension for the fallback URL
+            const extension = filename.includes('.') ? '' : '.cha';
+            const localUrl = `${this.getBaseUrl()}${this.teaFolder}${filename}${extension}`;
+            
+            console.log('Trying fallback URL:', localUrl);
+            
+            const fallbackResponse = await fetch(localUrl);
+            
+            if (!fallbackResponse.ok) {
+              throw new Error(`Fallback HTTP error! Status: ${fallbackResponse.status}`);
+            }
+            
+            return await fallbackResponse.json();
+          } catch (fallbackError) {
+            console.error('Fallback fetch failed:', fallbackError);
+            throw primaryError; // Re-throw the original error
+          }
+        }
+      };
+      
+      const data = await fetchWithFallback(validUrl);
       
       // Validate required fields
       if (!data.name || !data.category) {
@@ -205,6 +331,12 @@ class TeaApp {
     
     if (this.teaTimer && teaData) {
       this.teaTimer.setTeaData(teaData);
+      
+      // Make sure drawer is opened after setting tea data
+      // This is redundant but ensures the drawer is visible
+      setTimeout(() => {
+        this.teaTimer.openDrawer();
+      }, 100);
     }
   }
   
@@ -239,13 +371,21 @@ class TeaApp {
   }
   
   async handleManualInput() {
-    const url = prompt('Enter the URL of a tea JSON file:');
+    // First, ask for the tea ID
+    const teaId = prompt('Enter the tea ID (e.g., 000, 010):');
     
-    if (url) {
+    if (teaId) {
+      // Construct the URL with proper base URL
+      const baseUrl = this.getBaseUrl();
+      const url = `${baseUrl}${this.teaFolder}${teaId}.cha`;
+      
+      console.log('Manual input URL:', url);
+      
+      // Process the URL as if it was scanned
       await this.handleNFCRead(url);
     }
   }
-  
+
   showLoader() {
     if (this.loader) {
       this.loader.classList.add('active');
@@ -286,6 +426,8 @@ class TeaApp {
     }, 5000);
   }
 }
+
+
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {

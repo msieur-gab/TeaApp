@@ -1,6 +1,6 @@
 // service-worker.js
 
-const CACHE_NAME = 'tea-timer-v1';
+const CACHE_NAME = 'tea-timer-v0.2';
 const URLS_TO_CACHE = [
   './',
   './index.html',
@@ -13,7 +13,7 @@ const URLS_TO_CACHE = [
   './js/nfc-handler.js',
   './js/components/tea-card.js',
   './js/components/tea-timer.js',
-  './js/components/category-menu.js',
+  './js/components/tea-menu.js',
   'https://cdn.jsdelivr.net/npm/dexie@3.2.3/dist/dexie.min.js'
 ];
 
