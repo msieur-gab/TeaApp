@@ -219,6 +219,7 @@ class TeaTimer extends HTMLElement {
     drawerElement.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
   }
   
+  // IMPORTANT: Keep this method for compatibility with app.js
   setTeaData(tea) {
     this.teaData = tea;
     
@@ -234,8 +235,25 @@ class TeaTimer extends HTMLElement {
     timerService.startTimer(duration, tea.name);
     timerService.pauseTimer();
     
-    this.openDrawer();
     this.render();
+  }
+  
+  // IMPORTANT: Keep this method for compatibility with app.js
+  openDrawer() {
+    this.animationInProgress = true;
+    this.isActive = true;
+    
+    const drawerElement = this.shadowRoot.querySelector('.timer-drawer');
+    if (drawerElement) {
+      drawerElement.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
+      drawerElement.style.transform = 'translateY(0)';
+      
+      // After animation completes
+      setTimeout(() => {
+        this.animationInProgress = false;
+        this.render();
+      }, 300);
+    }
   }
   
   calculateBrewDuration() {
@@ -330,23 +348,6 @@ class TeaTimer extends HTMLElement {
       this.openDrawer();
     } else {
       this.closeDrawer();
-    }
-  }
-  
-  openDrawer() {
-    this.animationInProgress = true;
-    this.isActive = true;
-    
-    const drawerElement = this.shadowRoot.querySelector('.timer-drawer');
-    if (drawerElement) {
-      drawerElement.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
-      drawerElement.style.transform = 'translateY(0)';
-      
-      // After animation completes
-      setTimeout(() => {
-        this.animationInProgress = false;
-        this.render();
-      }, 300);
     }
   }
   
@@ -832,3 +833,7 @@ class TeaTimer extends HTMLElement {
     this.updateTimerDisplay(timerService.getTimeRemaining(), timerService.getOriginalDuration());
   }
 }
+
+customElements.define('tea-timer', TeaTimer);
+
+export default TeaTimer;
