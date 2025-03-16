@@ -1,6 +1,6 @@
 // service-worker.js
 
-const CACHE_NAME = 'tea-timer-v0.5.1';
+const CACHE_NAME = 'tea-timer-v0.5.2';
 const URLS_TO_CACHE = [
   './',
   './index.html',
@@ -262,6 +262,7 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// Handle messages from the client
 self.addEventListener('message', (event) => {
   if (!event.data) return;
   
@@ -269,45 +270,42 @@ self.addEventListener('message', (event) => {
   if (event.data.type === 'TIMER_COMPLETE') {
     const title = 'Tea Timer';
     const teaName = event.data.teaName || 'tea';
-    const silent = event.data.silent === true; // Get silent flag from message
     
-    console.log(`[Service Worker] Showing notification for tea: ${teaName} (silent: ${silent})`);
+    console.log(`[Service Worker] Processing notification for tea: ${teaName}`);
     
-    // Show a notification with maximum compatibility options
-    self.registration.showNotification(title, {
-      body: `Your ${teaName} is ready!`,
-      icon: './assets/icons/icon-192x192.png',
-      badge: './assets/icons/icon-72x72.png',
-      vibrate: [200, 100, 200, 100, 200],
-      tag: 'tea-timer-notification',
-      renotify: true,
-      timestamp: Date.now(),
-      requireInteraction: true,
-      silent: silent, // Use the silent flag from the message
-      actions: [
-        {
-          action: 'open',
-          title: 'Open App'
-        }
-      ]
-    }).then(() => {
-      console.log('[Service Worker] Notification shown successfully');
-      
-      // After showing notification, prompt clients to play sound directly
-      // BUT ONLY if we're showing a silent notification
-      // Otherwise we'd have double sound
-      if (silent) {
-        self.clients.matchAll().then(clients => {
-          clients.forEach(client => {
-            client.postMessage({
-              type: 'PLAY_NOTIFICATION_SOUND',
-              timestamp: Date.now()
-            });
-          });
+    // First, tell clients to play sound before showing the notification
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'PLAY_NOTIFICATION_SOUND',
+          timestamp: Date.now()
         });
-      }
-    }).catch(error => {
-      console.error('[Service Worker] Failed to show notification:', error);
+      });
+      
+      // Small delay to let sound start playing first
+      setTimeout(() => {
+        // Show notification with default sound disabled if possible
+        self.registration.showNotification(title, {
+          body: `Your ${teaName} is ready!`,
+          icon: './assets/icons/icon-192x192.png',
+          badge: './assets/icons/icon-72x72.png',
+          vibrate: [200, 100, 200, 100, 200],
+          tag: 'tea-timer-notification',
+          renotify: true,
+          timestamp: Date.now(),
+          requireInteraction: true,
+          actions: [
+            {
+              action: 'open',
+              title: 'Open App'
+            }
+          ]
+        }).then(() => {
+          console.log('[Service Worker] Notification shown successfully');
+        }).catch(error => {
+          console.error('[Service Worker] Failed to show notification:', error);
+        });
+      }, 150); // Small delay to allow sound to start first
     });
   }
 });

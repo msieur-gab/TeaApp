@@ -13,12 +13,28 @@ class NotificationService {
     
     // Initialize audio unlocking
     this.setupAudioUnlocking();
+    
+    // Listen for service worker messages
+    this.setupServiceWorkerListener();
   }
 
   // Helper for logging
   log(message) {
     if (this.isLogging) {
       console.log(`[NotificationService] ${message}`);
+    }
+  }
+  
+  // Setup service worker message listener
+  setupServiceWorkerListener() {
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', async (event) => {
+        if (event.data && event.data.type === 'PLAY_NOTIFICATION_SOUND') {
+          this.log('Received sound play request from Service Worker');
+          await this.playSound().catch(err => this.log(`Error playing sound: ${err.message}`));
+        }
+      });
+      this.log('Service worker message listener set up');
     }
   }
 
@@ -88,8 +104,10 @@ class NotificationService {
     try {
       // Try to play a silent sound to request permission
       const audio = new Audio();
-      audio.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1TSS0UAAAAPAAADTGF2ZjU4LjIwLjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//WreyTRUoAWgBgkOAGbZHBgG1OF6zM82DWbZaUmMBptgQhGjsyYqc9ae9XFz280948NMBWInljyzsNRFLPWdnZGWrddDsjK1unuSrVN9jJsK8KuQtQCtMBjCEtImISdNKJOopIpBFpNSMbIHCSRpRR5iakjTiyzLhchUUBwCgyKiweBv/7UsQbg8isVNoMPMjAAAA0gAAABEVFGmgqK////kSZQ7KAgGwAAAH///R5QbCUQEgAAIQoe5zO6//9bVs9yXqQCgAAAVcMW1trGjjRscDUFAgEZCMZVZDIpmSKvaa39zX+dDf95V+DfNjoDFGmk0OhtOYolF0t7GH////4Y0I2H3fxoLlAoAAAKnGLm1vGjn0ImdBUFQZEZRlSyCRTbKc/u9IqX/SRL5tKbXc7N804m6lvasvva7Gxv///+CwIQxhfSgLlAoAAADI2bFltWODzGzyVxS/7UsQVA8f0SZgqYfcIAAANIAAAAQ5DiukxWNGgmm/uZf9Q76Tq0udDHykYY6kTyyLGBQD8LsNB8Pv///8urkYY6iQQA2AAAAHGmrLaschzI2ShRDjbke5TcGxpECr/1Kif+n7VufnY2hkl7gdmnQwFAMwuBmKAZ2v///+CYQABh/QgALAAAAA0MzpMKpUDLIXXFClDOk0nAoGs////CoLsVEK2e8z5v///wJpAC4AAz//tSxAGDxiRKniplM5IAABpAAAAEAAADQAB//QAAAWmrrrDNjmRKpWmKlAZEOQ2I2JCZv///9Pv8NB5/3Ob///8bUAFwAAAAABOgAJn//oAAAOYpmrGWhymRdUK21EYESUM6JCVUPf///YQ/hoPP+fOX///43oALgAAAAABQgAM3+tAAAABNjNS5jis9t1ybQlkk6A0IURmZCRY9///pE/w2Hn/fP//7UsQBA8WESZYqZTOSAAAaQAAAAf///G9AA4AAAAAAUoAB//6UAAXHDIuYmHJrjgUh0HJE7IUBkRFEhIie///0qv4bDz/v/L///+CAABwAAA=';
       audio.volume = 0.01; // Very quiet
+      
+      // Use base64 encoded silent sound to avoid network requests
+      audio.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1TSS0UAAAAPAAADTGF2ZjU4LjIwLjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//WreyTRUoAWgBgkOAGbZHBgG1OF6zM82DWbZaUmMBptgQhGjsyYqc9ae9XFz280948NMBWInljyzsNRFLPWdnZGWrddDsjK1unuSrVN9jJsK8KuQtQCtMBjCEtImISdNKJOopIpBFpNSMbIHCSRpRR5iakjTiyzLhchUUBwCgyKiweBv/7UsQbg8isVNoMPMjAAAA0gAAABEVFGmgqK////kSZQ7KAgGwAAAH///R5QbCUQEgAAIQoe5zO6//9bVs9yXqQCgAAAVcMW1trGjjRscDUFAgEZCMZVZDIpmSKvaa39zX+dDf95V+DfNjoDFGmk0OhtOYolF0t7GH////4Y0I2H3fxoLlAoAAAKnGLm1vGjn0ImdBUFQZEZRlSyCRTbKc/u9IqX/SRL5tKbXc7N804m6lvasvva7Gxv///+CwIQxhfSgLlAoAAADI2bFltWODzGzyVxS/7UsQVA8f0SZgqYfcIAAANIAAAAQ5DiukxWNGgmm/uZf9Q76Tq0udDHykYY6kTyyLGBQD8LsNB8Pv///8urkYY6iQQA2AAAAHGmrLaschzI2ShRDjbke5TcGxpECr/1Kif+n7VufnY2hkl7gdmnQwFAMwuBmKAZ2v///+CYQABh/QgALAAAAA0MzpMKpUDLIXXFClDOk0nAoGs////CoLsVEK2e8z5v///wJpAC4AAz//tSxAGDxiRKniplM5IAABpAAAAEAAADQAB//QAAAWmrrrDNjmRKpWmKlAZEOQ2I2JCZv///9Pv8NB5/3Ob///8bUAFwAAAAABOgAJn//oAAAOYpmrGWhymRdUK21EYESUM6JCVUPf///YQ/hoPP+fOX///43oALgAAAAABQgAM3+tAAAABNjNS5jis9t1ybQlkk6A0IURmZCRY9///pE/w2Hn/fP//7UsQBA8WESZYqZTOSAAAaQAAAAf///G9AA4AAAAAAUoAB//6UAAXHDIuYmHJrjgUh0HJE7IUBkRFEhIie///0qv4bDz/v/L///+CAABwAAA=';
       
       // Try to play
       const playPromise = audio.play();
@@ -134,9 +152,13 @@ class NotificationService {
       container.appendChild(messageEl);
       
       // Auto-remove after 5 seconds
-      setTimeout(() => messageEl.remove(), 5000);
+      setTimeout(() => {
+        if (messageEl.parentNode === container) {
+          messageEl.remove();
+        }
+      }, 5000);
     } else {
-      // Fallback to alert if no container
+      // Fallback to console if no container
       console.log(`Message: ${message}`);
     }
   }
@@ -253,20 +275,22 @@ class NotificationService {
       return true;
     } else {
       // App is in background or closed, use a full notification approach
-      // Play sound first before showing notification
-      const soundResult = await this.playSound();
       
-      // Then show a silent notification
-      const notificationResult = await Promise.allSettled([
-        this.showServiceWorkerNotification(teaName, true),  // true = silent
-        this.showRegularNotification(teaName, true)        // true = silent
-      ]);
+      // Play sound first 
+      await this.playSound().catch(error => {
+        this.log(`Error playing sound: ${error.message}`);
+      });
       
       // Always try to vibrate
       this.vibrate();
       
+      // Then show notification
+      const notificationResult = await Promise.allSettled([
+        this.showServiceWorkerNotification(teaName),
+        this.showRegularNotification(teaName)
+      ]);
+      
       // Log results for debugging
-      this.log(`Sound played: ${soundResult}`);
       notificationResult.forEach((result, index) => {
         const methods = ['ServiceWorker Notification', 'Regular Notification'];
         if (result.status === 'fulfilled') {
@@ -277,25 +301,24 @@ class NotificationService {
       });
       
       // Return true if any method succeeded
-      return soundResult || notificationResult.some(r => r.status === 'fulfilled' && r.value === true);
+      return notificationResult.some(r => r.status === 'fulfilled' && r.value === true);
     }
   }
 
   // Try to show notification via service worker
-  async showServiceWorkerNotification(teaName, silent = false) {
+  async showServiceWorkerNotification(teaName) {
     if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
       this.log('No active service worker controller');
       return false;
     }
     
     try {
-      this.log(`Using service worker for notification (silent: ${silent})`);
+      this.log(`Using service worker for notification for tea: ${teaName}`);
       
       // Send message to service worker
       navigator.serviceWorker.controller.postMessage({
         type: 'TIMER_COMPLETE',
-        teaName: teaName,
-        silent: silent
+        teaName: teaName
       });
       
       return true;
@@ -306,7 +329,7 @@ class NotificationService {
   }
 
   // Show a direct notification (fallback)
-  async showRegularNotification(teaName, silent = false) {
+  async showRegularNotification(teaName) {
     try {
       // Make sure permissions are initialized
       const hasPermission = await this.init();
@@ -315,14 +338,13 @@ class NotificationService {
         return false;
       }
       
-      this.log(`Creating regular notification (silent: ${silent})`);
+      this.log(`Creating regular notification for tea: ${teaName}`);
       const notification = new Notification('Tea Timer', {
         body: `Your ${teaName || 'tea'} is ready!`,
         icon: './assets/icons/apple-touch-icon.png',
         tag: 'tea-timer-notification',
         renotify: true,
-        requireInteraction: true,
-        silent: silent // Set silent flag based on parameter
+        requireInteraction: true
       });
       
       // Handle click on notification
