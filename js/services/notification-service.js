@@ -45,7 +45,9 @@ class NotificationService {
           vibrate: [200, 100, 200],
           tag: 'tea-timer-notification',
           renotify: true,
-          requireInteraction: true
+          requireInteraction: true,
+          sound: './assets/sounds/notification.mp3' // Add this line
+
         });
         
         return true;
