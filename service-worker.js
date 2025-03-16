@@ -1,6 +1,6 @@
 // service-worker.js
 
-const CACHE_NAME = 'tea-timer-v0.3';
+const CACHE_NAME = 'tea-timer-v0.4';
 const URLS_TO_CACHE = [
   './',
   './index.html',
@@ -230,7 +230,7 @@ self.addEventListener('message', (event) => {
     const title = 'Tea Timer';
     const teaName = event.data.teaName || 'tea';
     
-    // Show a notification with sound
+    // Show a notification with consistent format
     self.registration.showNotification(title, {
       body: `Your ${teaName} is ready!`,
       icon: './assets/icons/icon-192x192.png',
@@ -240,8 +240,44 @@ self.addEventListener('message', (event) => {
       renotify: true,
       timestamp: Date.now(),
       requireInteraction: true,
-      sound: './assets/sounds/notification.mp3'  // Custom notification sound
+      actions: [
+        {
+          action: 'open',
+          title: 'Open App'
+        }
+      ]
     });
+  }
+});
+
+// Handle notification action clicks
+self.addEventListener('notificationclick', (event) => {
+  const notificationAction = event.action;
+  const notification = event.notification;
+  
+  notification.close();
+  
+  if (notificationAction === 'open' || !notificationAction) {
+    // Focus on or open a client window
+    event.waitUntil(
+      clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true
+      })
+      .then((clientList) => {
+        // Try to focus an existing window
+        for (const client of clientList) {
+          if (client.url.includes('/TeaApp/') && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        
+        // If no existing window, open a new one
+        if (clients.openWindow) {
+          return clients.openWindow('./');
+        }
+      })
+    );
   }
 });
 

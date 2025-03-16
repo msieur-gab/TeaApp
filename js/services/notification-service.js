@@ -4,6 +4,7 @@
 class NotificationService {
   constructor() {
     this.hasRequestedPermission = false;
+    this.sound = null;
   }
 
   // Initialize the notification service
@@ -24,8 +25,25 @@ class NotificationService {
     return Notification.permission === 'granted';
   }
 
-  // Show a notification for completed tea timer
+  // Main method to notify users that tea is ready
   async notifyTeaReady(teaName) {
+    // Try all notification methods concurrently
+    const results = await Promise.all([
+      this.showVisualNotification(teaName),
+      this.playSound(),
+      this.vibrate()
+    ]);
+    
+    // Log if all notification methods failed
+    if (!results.some(result => result)) {
+      console.warn('All notification methods failed');
+    }
+    
+    return results.some(result => result);
+  }
+
+  // Show a visual notification (through service worker or direct)
+  async showVisualNotification(teaName) {
     // Make sure permissions are initialized
     const hasPermission = await this.init();
     if (!hasPermission) {
@@ -35,21 +53,12 @@ class NotificationService {
 
     try {
       // Try to use service worker for more reliable notifications
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        
-        await registration.showNotification('Tea Timer', {
-          body: `Your ${teaName || 'tea'} is ready!`,
-          icon: './assets/icons/icon-192x192.png',
-          badge: './assets/icons/icon-72x72.png',
-          vibrate: [200, 100, 200],
-          tag: 'tea-timer-notification',
-          renotify: true,
-          requireInteraction: true,
-          sound: './assets/sounds/notification.mp3' // Add this line
-
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        // Send message to service worker to show notification
+        navigator.serviceWorker.controller.postMessage({
+          type: 'TIMER_COMPLETE',
+          teaName: teaName
         });
-        
         return true;
       } else {
         // Fall back to regular notification
@@ -89,34 +98,37 @@ class NotificationService {
   }
 
   // Play a sound notification
-  playSound() {
+  async playSound() {
     try {
       // Create audio element if it doesn't exist yet
       if (!this.sound) {
         this.sound = new Audio('./assets/sounds/notification.mp3');
         
-        // Fallback to another format if MP3 isn't supported
+        // Set up error handler
         this.sound.onerror = () => {
+          console.warn('Error with primary sound, trying fallback');
           this.sound = new Audio('./assets/sounds/notification.ogg');
         };
+        
+        // Preload the sound if possible
+        if (this.sound.preload) {
+          this.sound.preload = 'auto';
+        }
       }
       
       // Reset to start if it was already playing
       this.sound.currentTime = 0;
       
       // Play the sound (returns a promise)
-      const playPromise = this.sound.play();
-      
-      // Handle potential play() rejection (happens if user hasn't interacted with page yet)
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.warn('Could not play timer sound:', error);
-        });
+      try {
+        await this.sound.play();
+        return true;
+      } catch (playError) {
+        console.warn('Could not play timer sound:', playError);
+        return false;
       }
-      
-      return true;
     } catch (e) {
-      console.warn('Error playing sound:', e);
+      console.warn('Error setting up sound:', e);
       return false;
     }
   }
@@ -125,6 +137,7 @@ class NotificationService {
   vibrate() {
     if ('vibrate' in navigator) {
       try {
+        // Pulse pattern: 200ms vibration, 100ms pause, 200ms vibration
         navigator.vibrate([200, 100, 200]);
         return true;
       } catch (e) {
@@ -132,20 +145,6 @@ class NotificationService {
       }
     }
     return false;
-  }
-
-  // Notify across all available channels
-  notifyAll(teaName) {
-    // Use all notification methods for maximum reliability
-    const soundPlayed = this.playSound();
-    const vibrateSuccess = this.vibrate();
-    
-    // Visual notification always last (in case permissions need to be requested)
-    this.notifyTeaReady(teaName).then(success => {
-      if (!success && !soundPlayed && !vibrateSuccess) {
-        console.warn('All notification methods failed');
-      }
-    });
   }
 }
 

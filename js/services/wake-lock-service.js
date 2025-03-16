@@ -5,6 +5,7 @@ class WakeLockService {
   constructor() {
     this.wakeLock = null;
     this.isSupported = 'wakeLock' in navigator;
+    this.wakeLockRequest = false;
     
     // Bind methods
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
@@ -34,6 +35,11 @@ class WakeLockService {
       return null;
     }
     
+    // If we already have a wake lock, return it
+    if (this.wakeLock) {
+      return this.wakeLock;
+    }
+    
     try {
       this.wakeLockRequest = true;
       const wakeLock = await navigator.wakeLock.request('screen');
@@ -42,7 +48,7 @@ class WakeLockService {
       
       // Set up release listener
       wakeLock.addEventListener('release', () => {
-        console.log('Wake Lock released');
+        console.log('Wake Lock released by system');
         this.wakeLock = null;
       });
       
@@ -53,6 +59,11 @@ class WakeLockService {
       this.wakeLockRequest = false;
       return null;
     }
+  }
+  
+  // Check if we currently have an active wake lock
+  isWakeLockActive() {
+    return this.wakeLock !== null;
   }
   
   // Release the wake lock

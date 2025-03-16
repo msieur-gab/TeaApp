@@ -10,9 +10,13 @@ class TimerService {
     this.isRunning = false;
     this.timeRemaining = 0;
     this.originalDuration = 0;
+    this.teaName = null;
     this.onUpdateCallbacks = [];
     this.onCompleteCallbacks = [];
     this.onStateChangeCallbacks = [];
+    
+    // Store wake lock service reference
+    this.wakeLockService = wakeLockService;
     
     // Bind methods
     this.handleWorkerMessage = this.handleWorkerMessage.bind(this);
@@ -56,15 +60,21 @@ class TimerService {
   handleWorkerMessage(event) {
     const data = event.data;
     
+    // Update common state for all message types
+    if ('timeRemaining' in data) {
+      this.timeRemaining = data.timeRemaining;
+    }
+    
+    // Update running state based on message type
     switch (data.type) {
       case 'update':
-        this.timeRemaining = data.timeRemaining;
+        // Just notify update callbacks
         this.notifyUpdateCallbacks(this.timeRemaining);
         break;
         
       case 'complete':
-        this.timeRemaining = 0;
         this.isRunning = false;
+        this.wakeLockService.releaseWakeLock();
         this.notifyUpdateCallbacks(0);
         this.notifyCompleteCallbacks();
         this.notifyStateChangeCallbacks('completed');
@@ -72,20 +82,21 @@ class TimerService {
         
       case 'paused':
       case 'stopped':
-        this.timeRemaining = data.timeRemaining;
         this.isRunning = false;
+        this.wakeLockService.releaseWakeLock();
         this.notifyUpdateCallbacks(this.timeRemaining);
         this.notifyStateChangeCallbacks('stopped');
         break;
         
       case 'resumed':
         this.isRunning = true;
+        this.wakeLockService.requestWakeLock();
         this.notifyStateChangeCallbacks('running');
         break;
         
       case 'reset':
-        this.timeRemaining = data.timeRemaining;
         this.isRunning = false;
+        this.wakeLockService.releaseWakeLock();
         this.notifyUpdateCallbacks(this.timeRemaining);
         this.notifyStateChangeCallbacks('reset');
         break;
@@ -114,7 +125,7 @@ class TimerService {
     this.teaName = teaName;
     
     // Request wake lock to keep screen on
-    wakeLockService.requestWakeLock();
+    this.wakeLockService.requestWakeLock();
     
     if (this.worker) {
       this.worker.postMessage({
@@ -133,12 +144,10 @@ class TimerService {
   
   // Pause the timer
   pauseTimer() {
-    // Release wake lock when paused
-    wakeLockService.releaseWakeLock();
-    
     if (this.worker) {
       this.worker.postMessage({ command: 'pause' });
       this.isRunning = false;
+      // Wake lock will be released in the message handler
       return true;
     }
     
@@ -147,12 +156,10 @@ class TimerService {
   
   // Resume the timer
   resumeTimer() {
-    // Request wake lock again
-    wakeLockService.requestWakeLock();
-    
     if (this.worker) {
       this.worker.postMessage({ command: 'resume' });
       this.isRunning = true;
+      // Wake lock will be requested in the message handler
       return true;
     }
     
@@ -161,9 +168,6 @@ class TimerService {
   
   // Reset the timer
   resetTimer() {
-    // Release wake lock when reset
-    wakeLockService.releaseWakeLock();
-    
     if (this.worker) {
       this.worker.postMessage({
         command: 'reset',
@@ -171,6 +175,7 @@ class TimerService {
       });
       
       this.isRunning = false;
+      // Wake lock will be released in the message handler
       return true;
     }
     
@@ -179,12 +184,10 @@ class TimerService {
   
   // Stop the timer
   stopTimer() {
-    // Release wake lock when stopped
-    wakeLockService.releaseWakeLock();
-    
     if (this.worker) {
       this.worker.postMessage({ command: 'stop' });
       this.isRunning = false;
+      // Wake lock will be released in the message handler
       return true;
     }
     
@@ -194,6 +197,11 @@ class TimerService {
   // Get current time remaining
   getTimeRemaining() {
     return this.timeRemaining;
+  }
+  
+  // Get original duration
+  getOriginalDuration() {
+    return this.originalDuration;
   }
   
   // Check if timer is running
@@ -250,7 +258,8 @@ class TimerService {
   
   // Notify all complete callbacks
   notifyCompleteCallbacks() {
-    notificationService.notifyAll(this.teaName);
+    // Delegate notification to the notification service
+    notificationService.notifyTeaReady(this.teaName);
     
     this.onCompleteCallbacks.forEach(callback => {
       try {
@@ -281,7 +290,7 @@ class TimerService {
       this.worker = null;
     }
     
-    wakeLockService.releaseWakeLock();
+    this.wakeLockService.releaseWakeLock();
     
     this.onUpdateCallbacks = [];
     this.onCompleteCallbacks = [];
