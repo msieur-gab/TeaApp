@@ -1,5 +1,7 @@
 // scripts/components/tea-timer.js
 
+import timerService from '../services/timer-service.js';
+
 class TeaTimer extends HTMLElement {
   constructor() {
     super();
@@ -9,9 +11,8 @@ class TeaTimer extends HTMLElement {
     this.isActive = false;
     this.timeRemaining = 0;
     this.originalTime = 0;
-    this.timerInterval = null;
     this.teaData = null;
-    this.brewStyle = 'gongfu'; // 'western' or 'gongfu'
+    this.brewStyle = 'western'; // 'western' or 'gongfu'
     this.currentInfusion = 1;
     
     // Touch handling
@@ -23,11 +24,21 @@ class TeaTimer extends HTMLElement {
     
     // Animation properties
     this.animationInProgress = false;
+    
+    // Bind timer service callback methods
+    this.handleTimerUpdate = this.handleTimerUpdate.bind(this);
+    this.handleTimerComplete = this.handleTimerComplete.bind(this);
+    this.handleTimerStateChange = this.handleTimerStateChange.bind(this);
   }
 
   connectedCallback() {
     this.render();
     this.addEventListeners();
+    
+    // Register timer service callbacks
+    timerService.onUpdate(this.handleTimerUpdate);
+    timerService.onComplete(this.handleTimerComplete);
+    timerService.onStateChange(this.handleTimerStateChange);
     
     // Calculate drawer height after rendering
     setTimeout(() => {
@@ -40,7 +51,11 @@ class TeaTimer extends HTMLElement {
   
   disconnectedCallback() {
     this.removeEventListeners();
-    this.stopTimer();
+    
+    // Unregister timer service callbacks
+    timerService.offUpdate(this.handleTimerUpdate);
+    timerService.offComplete(this.handleTimerComplete);
+    timerService.offStateChange(this.handleTimerStateChange);
   }
   
   static get observedAttributes() {
@@ -52,6 +67,34 @@ class TeaTimer extends HTMLElement {
       this.isActive = newValue === 'true';
       this.render();
     }
+  }
+  
+  // Timer service event handlers
+  handleTimerUpdate(timeRemaining) {
+    this.timeRemaining = timeRemaining;
+    this.updateTimerDisplay();
+  }
+  
+  handleTimerComplete() {
+    this.timeRemaining = 0;
+    this.updateTimerDisplay();
+    
+    // For gongfu brewing, highlight infusion controls to start next
+    if (this.brewStyle === 'gongfu') {
+      const infusionControls = this.shadowRoot.querySelector('.infusion-controls');
+      if (infusionControls) {
+        infusionControls.classList.add('highlight');
+        
+        // Remove highlight after a few seconds
+        setTimeout(() => {
+          infusionControls.classList.remove('highlight');
+        }, 3000);
+      }
+    }
+  }
+  
+  handleTimerStateChange(state) {
+    this.updateButtonStates(state);
   }
   
   addEventListeners() {
@@ -307,132 +350,21 @@ class TeaTimer extends HTMLElement {
     }
   }
   
+  // Timer control methods - now using the timer service
   startTimer() {
-    if (this.timerInterval) return; // Timer already running
+    if (!this.teaData) return;
     
-    this.timerInterval = setInterval(() => {
-      if (this.timeRemaining > 0) {
-        this.timeRemaining--;
-        this.updateTimerDisplay();
-      } else {
-        this.stopTimer();
-        this.timerCompleted();
-      }
-    }, 1000);
-    
-    this.updateButtonStates('running');
+    timerService.startTimer(this.timeRemaining, this.teaData.name);
   }
   
   stopTimer() {
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-      this.timerInterval = null;
-      this.updateButtonStates('stopped');
-    }
+    timerService.pauseTimer();
   }
   
   resetTimer() {
-    this.stopTimer();
+    timerService.resetTimer();
     this.timeRemaining = this.originalTime;
     this.updateTimerDisplay();
-    this.updateButtonStates('reset');
-  }
-  
-timerCompleted() {
-    // Vibration feedback if supported
-    if ('vibrate' in navigator) {
-      navigator.vibrate([200, 100, 200]);
-    }
-    this.playCompletionSound();
-
-    // Enhanced notification handling
-    const showNotification = () => {
-      // Check if Notifications are supported
-      if (!('Notification' in window)) {
-        console.warn('Notifications not supported');
-        return;
-      }
-
-      // Request permission if not already granted
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          try {
-            // Create notification with more robust options
-            const notification = new Notification('Tea Timer', {
-              body: `Your ${this.teaData?.name || 'tea'} is ready!`,
-              icon: './assets/icons/apple-touch-icon.png', // Use a larger, more recognizable icon
-              tag: 'tea-timer-notification',
-              renotify: true,
-              requireInteraction: true // Keeps notification visible until dismissed
-            });
-
-            // Optional: Add click handler to bring app to foreground
-            notification.onclick = () => {
-              window.focus();
-              notification.close();
-            };
-          } catch (error) {
-            console.error('Failed to create notification:', error);
-          }
-        } else {
-          console.warn('Notification permission denied');
-        }
-      }).catch(error => {
-        console.error('Error requesting notification permission:', error);
-      });
-    };
-
-    // Attempt to show notification
-    showNotification();
-    
-    // Update button states
-    this.updateButtonStates('completed');
-    
-    // For gongfu brewing, offer to start next infusion
-    if (this.brewStyle === 'gongfu') {
-      const infusionControls = this.shadowRoot.querySelector('.infusion-controls');
-      if (infusionControls) {
-        infusionControls.classList.add('highlight');
-        
-        // Remove highlight after a few seconds
-        setTimeout(() => {
-          infusionControls.classList.remove('highlight');
-        }, 3000);
-      }
-    }
-  }
-
-  playCompletionSound() {
-    // Create audio element if it doesn't exist yet
-    if (!this.completionSound) {
-      this.completionSound = new Audio('./assets/sounds/notification.mp3');
-      
-      // Fallback to another format if MP3 isn't supported
-      this.completionSound.onerror = () => {
-        this.completionSound = new Audio('./assets/sounds/notification.ogg');
-      };
-    }
-    
-    // Try to play the sound
-    // The volume will be controlled by the device as requested
-    try {
-      // Reset to start if it was already playing
-      this.completionSound.currentTime = 0;
-      
-      // Play the sound (returns a promise)
-      const playPromise = this.completionSound.play();
-      
-      // Handle potential play() rejection (happens if user hasn't interacted with page yet)
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.warn('Could not play timer sound:', error);
-          // We don't need to handle this further as the notification and vibration
-          // will still alert the user
-        });
-      }
-    } catch (e) {
-      console.warn('Error playing sound:', e);
-    }
   }
   
   formatTime(seconds) {
@@ -876,7 +808,9 @@ timerCompleted() {
     
     this.addEventListeners();
     this.updateTimerDisplay();
-    this.updateButtonStates(this.timerInterval ? 'running' : 'reset');
+    
+    // Update button states based on current timer state
+    this.updateButtonStates(timerService.isTimerRunning() ? 'running' : 'reset');
   }
 }
 
