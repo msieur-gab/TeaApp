@@ -24,7 +24,6 @@ class TeaTimer extends HTMLElement {
     
     // Bind methods
     this.handleTimerUpdate = this.handleTimerUpdate.bind(this);
-    this.handleTimerComplete = this.handleTimerComplete.bind(this);
     this.handleTimerStateChange = this.handleTimerStateChange.bind(this);
     this.handleDrawerClick = this.toggleDrawer.bind(this);
     this.handleTouchStart = this.handleTouchStart.bind(this);
@@ -38,7 +37,6 @@ class TeaTimer extends HTMLElement {
     
     // Register timer service callbacks
     timerService.onUpdate(this.handleTimerUpdate);
-    timerService.onComplete(this.handleTimerComplete);
     timerService.onStateChange(this.handleTimerStateChange);
     
     // Calculate drawer height
@@ -55,7 +53,6 @@ class TeaTimer extends HTMLElement {
     
     // Unregister timer service callbacks
     timerService.offUpdate(this.handleTimerUpdate);
-    timerService.offComplete(this.handleTimerComplete);
     timerService.offStateChange(this.handleTimerStateChange);
   }
   
@@ -71,20 +68,34 @@ class TeaTimer extends HTMLElement {
   }
   
   // Timer service event handlers
-  handleTimerUpdate(timeRemaining) {
-    this.updateTimerDisplay(timeRemaining, timerService.getOriginalDuration());
-  }
-  
-  handleTimerComplete() {
-    // For gongfu brewing, highlight infusion controls
-    if (this.brewStyle === 'gongfu') {
-      const infusionControls = this.shadowRoot.querySelector('.infusion-controls');
-      if (infusionControls) {
-        infusionControls.classList.add('highlight');
-        setTimeout(() => infusionControls.classList.remove('highlight'), 3000);
+  handleTimerUpdate(timeRemaining, originalDuration) {
+    // Track if originalDuration has changed (indicating time was added)
+    const durationChanged = this.lastOriginalDuration && this.lastOriginalDuration !== originalDuration;
+    
+    // Store current value for next comparison
+    this.lastOriginalDuration = originalDuration;
+    
+    // If duration changed, handle the progress bar transition
+    if (durationChanged) {
+      const progressBar = this.shadowRoot.querySelector('.timer-progress-bar');
+      if (progressBar) {
+        // Temporarily disable transition for instant adjustment
+        progressBar.style.transition = 'none';
+        
+        // Force a reflow to apply the disabled transition
+        progressBar.offsetHeight;
+        
+        // Re-enable transition after a brief moment
+        setTimeout(() => {
+          progressBar.style.transition = 'width 1s linear, background-color 1s ease';
+        }, 10);
       }
     }
+    
+    // Update the timer display
+    this.updateTimerDisplay(timeRemaining, originalDuration);
   }
+  
   
   handleTimerStateChange(state) {
     this.updateButtonStates(state);
@@ -399,12 +410,24 @@ class TeaTimer extends HTMLElement {
       progressBar.style.width = `${progressPercent}%`;
       
       // Change color as time runs out
-      if (progressPercent < 25) {
-        progressBar.style.backgroundColor = '#f44336'; // Red
+      // if (progressPercent < 25) {
+      //   progressBar.style.backgroundColor = '#f44336'; // Red
+      // } else if (progressPercent < 50) {
+      //   progressBar.style.backgroundColor = '#ff9800'; // Orange
+      // } else {
+      //   progressBar.style.backgroundColor = '#4a90e2'; // Blue
+      // }
+
+      if (progressPercent < 10) {
+        progressBar.style.backgroundColor = '#558B2F'; // Deep Green
+      } else if (progressPercent < 25) {
+        progressBar.style.backgroundColor = '#7CB342'; // Medium Green
       } else if (progressPercent < 50) {
-        progressBar.style.backgroundColor = '#ff9800'; // Orange
+        progressBar.style.backgroundColor = '#AED581'; // Light Green
+      } else if (progressPercent < 75) {
+        progressBar.style.backgroundColor = '#DCEDC8'; // Pale Green
       } else {
-        progressBar.style.backgroundColor = '#4a90e2'; // Blue
+        progressBar.style.backgroundColor = '#F1F8E9'; // Very Pale Green
       }
     }
   }
@@ -611,17 +634,6 @@ class TeaTimer extends HTMLElement {
         transition: background-color 0.3s ease;
       }
       
-      .infusion-controls.highlight {
-        background-color: #e8f4f8;
-        animation: pulse 2s infinite;
-      }
-      
-      @keyframes pulse {
-        0% { background-color: #e8f4f8; }
-        50% { background-color: #c7e6f7; }
-        100% { background-color: #e8f4f8; }
-      }
-      
       .infusion-controls button {
         background: none;
         border: none;
@@ -668,7 +680,7 @@ class TeaTimer extends HTMLElement {
       
       .timer-progress-bar {
         height: 100%;
-        background-color: #4a90e2;
+        background-color: #E8F5E9;
         width: 100%;
         transition: width 1s linear, background-color 1s ease;
       }

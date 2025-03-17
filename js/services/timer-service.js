@@ -71,11 +71,16 @@ class TimerService {
       this.timeRemaining = data.timeRemaining;
     }
     
+    // Update original duration if provided
+    if ('originalDuration' in data) {
+      this.originalDuration = data.originalDuration;
+    }
+    
     // Update running state based on message type
     switch (data.type) {
       case 'update':
         // Just notify update callbacks
-        this.notifyUpdateCallbacks(this.timeRemaining);
+        this.notifyUpdateCallbacks(this.timeRemaining, this.originalDuration);
         break;
         
       case 'complete':
@@ -84,7 +89,7 @@ class TimerService {
         // Make sure to release wake lock when timer completes
         this.ensureWakeLockReleased();
         
-        this.notifyUpdateCallbacks(0);
+        this.notifyUpdateCallbacks(0, this.originalDuration);
         this.notifyCompleteCallbacks();
         this.notifyStateChangeCallbacks('completed');
         break;
@@ -96,7 +101,7 @@ class TimerService {
         // Release wake lock when timer is paused or stopped
         this.ensureWakeLockReleased();
         
-        this.notifyUpdateCallbacks(this.timeRemaining);
+        this.notifyUpdateCallbacks(this.timeRemaining, this.originalDuration);
         this.notifyStateChangeCallbacks('stopped');
         break;
         
@@ -115,7 +120,7 @@ class TimerService {
         // Release wake lock when timer is reset
         this.ensureWakeLockReleased();
         
-        this.notifyUpdateCallbacks(this.timeRemaining);
+        this.notifyUpdateCallbacks(this.timeRemaining, this.originalDuration);
         this.notifyStateChangeCallbacks('reset');
         break;
     }
@@ -247,9 +252,13 @@ class TimerService {
   // Add time to the timer
   addTime(seconds) {
     if (this.worker) {
+      // Update our local originalDuration
+      this.originalDuration += seconds;
+      
       this.worker.postMessage({
         command: 'addTime',
-        seconds: seconds
+        seconds: seconds,
+        newOriginalDuration: this.originalDuration
       });
       
       return true;
@@ -300,10 +309,10 @@ class TimerService {
   }
   
   // Notify all update callbacks
-  notifyUpdateCallbacks(timeRemaining) {
+  notifyUpdateCallbacks(timeRemaining, originalDuration) {
     this.onUpdateCallbacks.forEach(callback => {
       try {
-        callback(timeRemaining);
+        callback(timeRemaining, originalDuration);
       } catch (error) {
         console.error('Error in timer update callback:', error);
       }
