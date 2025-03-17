@@ -423,12 +423,20 @@ class TeaTimer extends HTMLElement {
       progressBar.style.width = `${progressPercent}%`;
       
       // Change color as time runs out
+      // if (progressPercent < 25) {
+      //   progressBar.style.backgroundColor = '#f44336'; // Red
+      // } else if (progressPercent < 50) {
+      //   progressBar.style.backgroundColor = '#ff9800'; // Orange
+      // } else {
+      //   progressBar.style.backgroundColor = '#4a90e2'; // Blue
+      // }
+
       if (progressPercent < 25) {
-        progressBar.style.backgroundColor = '#f44336'; // Red
+        progressBar.style.backgroundColor = '#795548'; // Dark, fully steeped tea
       } else if (progressPercent < 50) {
-        progressBar.style.backgroundColor = '#ff9800'; // Orange
+        progressBar.style.backgroundColor = '#B38867'; // Medium steep
       } else {
-        progressBar.style.backgroundColor = '#4a90e2'; // Blue
+        progressBar.style.backgroundColor = '#D7CCC8'; // Light tea
       }
     }
   }
