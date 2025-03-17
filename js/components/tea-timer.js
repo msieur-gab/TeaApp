@@ -700,7 +700,7 @@ class TeaTimer extends HTMLElement {
       
       .timer-progress-bar {
         height: 100%;
-        background-color: #4a90e2;
+        background-color: #D7CCC8;
         width: 100%;
         transition: width 1s linear, background-color 1s ease;
       }
