@@ -71,8 +71,32 @@ class TeaTimer extends HTMLElement {
   }
   
   // Timer service event handlers
-  handleTimerUpdate(timeRemaining) {
-    this.updateTimerDisplay(timeRemaining, timerService.getOriginalDuration());
+  handleTimerUpdate(timeRemaining, originalDuration) {
+    // Track if originalDuration has changed (indicating time was added)
+    const durationChanged = this.lastOriginalDuration && this.lastOriginalDuration !== originalDuration;
+    
+    // Store current value for next comparison
+    this.lastOriginalDuration = originalDuration;
+    
+    // If duration changed, handle the progress bar transition
+    if (durationChanged) {
+      const progressBar = this.shadowRoot.querySelector('.timer-progress-bar');
+      if (progressBar) {
+        // Temporarily disable transition for instant adjustment
+        progressBar.style.transition = 'none';
+        
+        // Force a reflow to apply the disabled transition
+        progressBar.offsetHeight;
+        
+        // Re-enable transition after a brief moment
+        setTimeout(() => {
+          progressBar.style.transition = 'width 1s linear, background-color 1s ease';
+        }, 10);
+      }
+    }
+    
+    // Update the timer display
+    this.updateTimerDisplay(timeRemaining, originalDuration);
   }
   
   handleTimerComplete() {

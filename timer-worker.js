@@ -37,7 +37,7 @@ self.onmessage = function(e) {
       });
       break;
     case 'addTime':
-      addTime(e.data.seconds);
+      addTime(e.data.seconds, e.data.newOriginalDuration);
       break;
   }
 };
@@ -90,7 +90,8 @@ function runTimer() {
         clearInterval(timerInterval);
         self.postMessage({ 
           type: 'complete',
-          teaName: teaName
+          teaName: teaName,
+          originalDuration: originalDuration
         });
       }
     }
@@ -159,9 +160,17 @@ function stopTimer() {
   });
 }
 
-function addTime(seconds) {
+function addTime(seconds, newOriginalDuration) {
   // Validate input
   const validSeconds = Number.isFinite(seconds) ? seconds : 0;
+  
+  // Update original duration if provided
+  if (Number.isFinite(newOriginalDuration)) {
+    originalDuration = newOriginalDuration;
+  } else {
+    // Otherwise just add to the original duration
+    originalDuration += validSeconds;
+  }
   
   // Add time to the current timer
   if (isPaused) {
