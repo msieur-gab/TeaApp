@@ -24,7 +24,6 @@ class TeaTimer extends HTMLElement {
     
     // Bind methods
     this.handleTimerUpdate = this.handleTimerUpdate.bind(this);
-    this.handleTimerComplete = this.handleTimerComplete.bind(this);
     this.handleTimerStateChange = this.handleTimerStateChange.bind(this);
     this.handleDrawerClick = this.toggleDrawer.bind(this);
     this.handleTouchStart = this.handleTouchStart.bind(this);
@@ -38,7 +37,6 @@ class TeaTimer extends HTMLElement {
     
     // Register timer service callbacks
     timerService.onUpdate(this.handleTimerUpdate);
-    timerService.onComplete(this.handleTimerComplete);
     timerService.onStateChange(this.handleTimerStateChange);
     
     // Calculate drawer height
@@ -55,7 +53,6 @@ class TeaTimer extends HTMLElement {
     
     // Unregister timer service callbacks
     timerService.offUpdate(this.handleTimerUpdate);
-    timerService.offComplete(this.handleTimerComplete);
     timerService.offStateChange(this.handleTimerStateChange);
   }
   
@@ -99,16 +96,6 @@ class TeaTimer extends HTMLElement {
     this.updateTimerDisplay(timeRemaining, originalDuration);
   }
   
-  handleTimerComplete() {
-    // For gongfu brewing, highlight infusion controls
-    if (this.brewStyle === 'gongfu') {
-      const infusionControls = this.shadowRoot.querySelector('.infusion-controls');
-      if (infusionControls) {
-        infusionControls.classList.add('highlight');
-        setTimeout(() => infusionControls.classList.remove('highlight'), 3000);
-      }
-    }
-  }
   
   handleTimerStateChange(state) {
     this.updateButtonStates(state);
@@ -645,17 +632,6 @@ class TeaTimer extends HTMLElement {
         padding: 0.5rem;
         border-radius: 8px;
         transition: background-color 0.3s ease;
-      }
-      
-      .infusion-controls.highlight {
-        background-color: #e8f4f8;
-        animation: pulse 2s infinite;
-      }
-      
-      @keyframes pulse {
-        0% { background-color: #e8f4f8; }
-        50% { background-color: #c7e6f7; }
-        100% { background-color: #e8f4f8; }
       }
       
       .infusion-controls button {
