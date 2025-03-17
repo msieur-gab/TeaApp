@@ -431,12 +431,16 @@ class TeaTimer extends HTMLElement {
       //   progressBar.style.backgroundColor = '#4a90e2'; // Blue
       // }
 
-      if (progressPercent < 25) {
-        progressBar.style.backgroundColor = '#795548'; // Dark, fully steeped tea
+      if (progressPercent < 10) {
+        progressBar.style.backgroundColor = '#558B2F'; // Deep Green
+      } else if (progressPercent < 25) {
+        progressBar.style.backgroundColor = '#7CB342'; // Medium Green
       } else if (progressPercent < 50) {
-        progressBar.style.backgroundColor = '#B38867'; // Medium steep
+        progressBar.style.backgroundColor = '#AED581'; // Light Green
+      } else if (progressPercent < 75) {
+        progressBar.style.backgroundColor = '#DCEDC8'; // Pale Green
       } else {
-        progressBar.style.backgroundColor = '#D7CCC8'; // Light tea
+        progressBar.style.backgroundColor = '#F1F8E9'; // Very Pale Green
       }
     }
   }
@@ -700,7 +704,7 @@ class TeaTimer extends HTMLElement {
       
       .timer-progress-bar {
         height: 100%;
-        background-color: #D7CCC8;
+        background-color: #E8F5E9;
         width: 100%;
         transition: width 1s linear, background-color 1s ease;
       }
