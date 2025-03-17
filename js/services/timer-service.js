@@ -166,11 +166,24 @@ class TimerService {
     }
   }
   
+  // Get time remaining
+  getTimeRemaining() {
+    // Ensure we return a valid number
+    return Number.isFinite(this.timeRemaining) ? this.timeRemaining : 0;
+  }
+  
+  // Get original duration
+  getOriginalDuration() {
+    // Ensure we return a valid number
+    return Number.isFinite(this.originalDuration) ? this.originalDuration : 0;
+  }
+  
   // Start the timer
   startTimer(duration, teaName) {
-    this.originalDuration = duration;
-    this.timeRemaining = duration;
-    this.teaName = teaName;
+    // Validate duration parameter
+    this.originalDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
+    this.timeRemaining = this.originalDuration;
+    this.teaName = teaName || 'tea';
     
     // Request wake lock to keep screen on
     this.wakeLockService.requestWakeLock();
@@ -178,7 +191,8 @@ class TimerService {
     if (this.worker) {
       this.worker.postMessage({
         command: 'start',
-        duration: duration
+        duration: this.originalDuration,
+        teaName: this.teaName
       });
       
       this.isRunning = true;
@@ -230,26 +244,18 @@ class TimerService {
     return false;
   }
   
-  // Stop the timer
-  stopTimer() {
+  // Add time to the timer
+  addTime(seconds) {
     if (this.worker) {
-      this.worker.postMessage({ command: 'stop' });
-      this.isRunning = false;
-      // Wake lock will be released in the message handler
+      this.worker.postMessage({
+        command: 'addTime',
+        seconds: seconds
+      });
+      
       return true;
     }
     
     return false;
-  }
-  
-  // Get current time remaining
-  getTimeRemaining() {
-    return this.timeRemaining;
-  }
-  
-  // Get original duration
-  getOriginalDuration() {
-    return this.originalDuration;
   }
   
   // Check if timer is running

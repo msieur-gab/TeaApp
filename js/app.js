@@ -6,11 +6,11 @@ import './components/tea-card.js';
 import './components/tea-timer.js';
 import './components/tea-menu.js';
 import notificationService from './services/notification-service.js';
+import wakeLockService from './services/wake-lock-service.js';
 
 class TeaApp {
   constructor() {
     this.nfcHandler = null;
-    this.teaCards = [];
     this.currentCategory = null;
     this.teaFolder = 'tea/';
     this.baseUrl = this.getBaseUrl();
@@ -20,17 +20,11 @@ class TeaApp {
   }
   
   getBaseUrl() {
-    // Extract the base URL of the current page (without filename and query parameters)
-    const url = window.location.href;
-    const urlObj = new URL(url);
+    // Get the base URL without filename and query parameters
+    const url = new URL(window.location.href);
+    let pathname = url.pathname;
     
-    // Get the origin (protocol + hostname + port)
-    const origin = urlObj.origin;
-    
-    // Get the pathname and remove the filename part if present
-    let pathname = urlObj.pathname;
-    
-    // Remove index.html or any other file from the path
+    // Remove index.html or other files from the path
     pathname = pathname.replace(/\/[^\/]*\.[^\/]*$/, '/');
     
     // Ensure the path ends with a slash
@@ -38,162 +32,76 @@ class TeaApp {
       pathname += '/';
     }
     
-    return origin + pathname;
+    return url.origin + pathname;
   }
   
   async init() {
-    // Check for required permissions - moved to the beginning for early prompting
-    await this.checkNotificationPermission();
+    // Show loader while initializing
+    this.showLoader();
     
-    // Initialize NFC handler
-    this.initNFC();
-    
-    // Initialize UI elements
-    this.initUI();
-    
-    // Check if the URL contains tea parameters
-    this.checkUrlForTeaParams();
-    
-    // Load teas from database
-    await this.loadTeas();
-    
-    // Load categories
-    await this.loadCategories();
-    
-    // Preload notification sounds for better responsiveness
-    this.preloadNotificationSounds();
-    
-    console.log('Tea app initialized');
-  }
-
-  // Initialize sound system
-initSoundSystem() {
-  // Listen for service worker messages about notifications
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data && event.data.type === 'PLAY_NOTIFICATION_SOUND') {
-        console.log('Received sound play request from Service Worker');
-        // The notification service will handle this
-        import('./services/notification-service.js').then(module => {
-          const notificationService = module.default;
-          notificationService.playSound().catch(error => {
-            console.error('Error playing sound:', error);
-          });
-        });
-      }
-    });
-  }
-  
-  // Try to unlock audio on user interaction
-  this.registerAudioUnlockEvents();
-}
-
-// Register events to unlock audio on user interaction
-registerAudioUnlockEvents() {
-  const unlockEvents = ['touchstart', 'touchend', 'mousedown', 'keydown', 'click'];
-  
-  // Create one handler
-  const unlockAudio = () => {
-    // Try to create a silent audio context to unlock audio
     try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        const audioContext = new AudioContext();
-        
-        // Create and play a silent sound
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        gainNode.gain.value = 0;  // Silent
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.start(0);
-        oscillator.stop(0.001);
-        
-        console.log('Audio context unlocked via user interaction');
-        
-        // Preload sounds via notification service
-        import('./services/notification-service.js').then(module => {
-          const notificationService = module.default;
-          notificationService.preloadSound();
-        });
-      }
+      // Initialize UI elements
+      this.initUI();
+      
+      // Register service worker
+      await this.registerServiceWorker();
+      
+      // Initialize notification service
+      await notificationService.init();
+      
+      // Initialize NFC handler
+      this.initNFC();
+      
+      // Check if URL contains tea parameters
+      this.checkUrlForTeaParams();
+      
+      // Load teas from database
+      await this.loadTeas();
+      
+      // Load categories
+      await this.loadCategories();
+      
+      console.log('Tea app initialized');
+      this.showMessage('App ready! Scan a tea tag or browse your collection.', 'info');
     } catch (error) {
-      console.warn('Error unlocking audio:', error);
+      console.error('Error initializing app:', error);
+      this.showMessage('Error initializing app. Please refresh the page.', 'error');
+    } finally {
+      this.hideLoader();
     }
-  };
-  
-  // Register for all events
-  unlockEvents.forEach(eventType => {
-    document.addEventListener(eventType, unlockAudio, { once: true });
-  });
-  
-  console.log('Audio unlock events registered');
-}
+  }
 
-  // Improved notification permission handling
-  async checkNotificationPermission() {
-    if ('Notification' in window) {
-      // Log current status
-      console.log('Current notification permission:', Notification.permission);
-      
-      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        try {
-          // Show a message explaining why we need notification permission
-          this.showMessage('Please allow notifications for timer alerts', 'info');
-          
-          // Request permission
-          const permission = await Notification.requestPermission();
-          console.log('Notification permission response:', permission);
-          
-          if (permission === 'granted') {
-            this.showMessage('Notifications enabled for timer alerts', 'success');
-          } else {
-            this.showMessage('Notifications disabled. Timer alerts may not work when app is in background.', 'warning');
-          }
-        } catch (error) {
-          console.error('Error requesting notification permission:', error);
-        }
+  async registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.register('./service-worker.js');
+        console.log('ServiceWorker registration successful:', registration.scope);
+        return true;
+      } catch (error) {
+        console.error('ServiceWorker registration failed:', error);
+        return false;
       }
-    } else {
-      console.warn('Notifications not supported in this browser');
-      this.showMessage('Notifications not supported in this browser. Timer functionality may be limited.', 'warning');
     }
+    return false;
   }
-  
-  // Preload sounds to improve playback reliability
-  preloadNotificationSounds() {
-    try {
-      // Create audio elements for both formats
-      const mp3Sound = new Audio('./assets/sounds/notification.mp3');
-      const oggSound = new Audio('./assets/sounds/notification.ogg');
-      
-      // Set to preload
-      mp3Sound.preload = 'auto';
-      oggSound.preload = 'auto';
-      
-      // Try to load
-      mp3Sound.load();
-      oggSound.load();
-      
-      console.log('Notification sounds preloaded');
-    } catch (error) {
-      console.warn('Error preloading notification sounds:', error);
-    }
-  }
-  
+
   initNFC() {
     this.nfcHandler = new NFCHandler(this.handleNFCRead.bind(this));
     
     // Start NFC scanner when the page loads
-    document.addEventListener('DOMContentLoaded', async () => {
-      if (await this.nfcHandler.startNFCScanner()) {
-        this.showMessage('NFC scanner ready. Scan a tea tag!', 'info');
-      } else {
-        this.showMessage('NFC scanning is not available. Open this app on a compatible device.', 'warning');
-      }
-    });
+    if ('NDEFReader' in window) {
+      this.nfcHandler.startNFCScanner()
+        .then(success => {
+          if (success) {
+            this.showMessage('NFC scanner ready. Scan a tea tag!', 'info');
+          }
+        })
+        .catch(error => {
+          console.error('Error starting NFC scanner:', error);
+        });
+    } else {
+      console.log('Web NFC API not supported in this browser');
+    }
   }
   
   checkUrlForTeaParams() {
@@ -203,20 +111,12 @@ registerAudioUnlockEvents() {
     if (urlParams.has('tea')) {
       const teaFile = urlParams.get('tea');
       const teaUrl = `${this.baseUrl}${this.teaFolder}${teaFile}`;
-      
-      // Process the tea file from URL
       this.handleNFCRead(teaUrl);
-      
-      // Clean up the URL to avoid reprocessing on refresh
       this.cleanupUrl();
     } else if (urlParams.has('teaId')) {
       const teaId = urlParams.get('teaId');
-      const teaUrl = `${this.baseUrl}${this.teaFolder}${teaId}.cha`; // Update to .cha extension
-      
-      // Process the tea file from URL
+      const teaUrl = `${this.baseUrl}${this.teaFolder}${teaId}.cha`;
       this.handleNFCRead(teaUrl);
-      
-      // Clean up the URL to avoid reprocessing on refresh
       this.cleanupUrl();
     }
   }
@@ -240,13 +140,13 @@ registerAudioUnlockEvents() {
     document.addEventListener('category-selected', this.handleCategorySelected.bind(this));
     document.addEventListener('show-detail-view', this.handleShowDetailView.bind(this));
     
-    // Button for manual JSON URL input (for testing without NFC)
+    // Button for manual JSON URL input
     const manualInputBtn = document.getElementById('manual-input-btn');
     if (manualInputBtn) {
       manualInputBtn.addEventListener('click', this.handleManualInput.bind(this));
     }
     
-    // Menu toggle button - now directly interacts with the menu component
+    // Menu toggle button
     const menuToggleBtn = document.getElementById('menu-toggle-btn');
     if (menuToggleBtn && this.categoryMenu) {
       menuToggleBtn.addEventListener('click', () => {
@@ -254,30 +154,21 @@ registerAudioUnlockEvents() {
       });
     }
     
-    // Handle responsive layout changes
+    // Handle responsive layout
     window.addEventListener('resize', this.handleResponsiveLayout.bind(this));
-      
-    // Initial layout setup
     this.handleResponsiveLayout();
     
     // Handle back button for detail views
     window.addEventListener('popstate', this.handlePopState.bind(this));
   }
   
-  // Add a new method to handle responsive layout changes
   handleResponsiveLayout() {
     const isMobile = window.innerWidth < 768;
     
-    // Adjust main content area margins based on screen size
+    // Adjust content area based on screen size
     const contentArea = document.querySelector('.content-area');
     if (contentArea) {
-      if (!isMobile) {
-        // On desktop, give space for the menu
-        contentArea.style.marginLeft = '200px';
-      } else {
-        // On mobile, use full width
-        contentArea.style.marginLeft = '0';
-      }
+      contentArea.style.marginLeft = isMobile ? '0' : '200px';
     }
   }
   
@@ -330,7 +221,6 @@ registerAudioUnlockEvents() {
     teas.forEach(tea => {
       const teaCard = document.createElement('tea-card');
       teaCard.teaData = tea;
-      
       this.teaContainer.appendChild(teaCard);
     });
   }
@@ -352,7 +242,6 @@ registerAudioUnlockEvents() {
         // Check if category exists, if not add it
         if (teaData.category) {
           await teaDB.addCategory(teaData.category);
-          // Refresh categories list
           await this.loadCategories();
         }
         
@@ -372,25 +261,19 @@ registerAudioUnlockEvents() {
   
   async fetchTeaData(url) {
     try {
-      // First, check if the URL is valid
+      // Validate and fix URL if needed
       let validUrl = url;
       
       try {
-        // Try to construct a valid URL object to validate it
         new URL(url);
       } catch (urlError) {
-        // If URL is invalid, it might be a relative path or missing the protocol
-        console.warn('Invalid URL format:', url);
-        
-        // Try to fix the URL by prepending the base URL
-        validUrl = this.getBaseUrl() + (url.startsWith('/') ? url.slice(1) : url);
-        console.log('Trying to fix URL:', validUrl);
+        validUrl = this.baseUrl + (url.startsWith('/') ? url.slice(1) : url);
+        console.log('Fixed URL:', validUrl);
       }
       
-      // Handle CORS issues by adding a fallback mechanism
+      // Fetch with fallback mechanism
       const fetchWithFallback = async (primaryUrl) => {
         try {
-          console.log('Fetching tea data from:', primaryUrl);
           const response = await fetch(primaryUrl);
           
           if (!response.ok) {
@@ -401,26 +284,20 @@ registerAudioUnlockEvents() {
         } catch (primaryError) {
           console.warn('Primary fetch failed:', primaryError);
           
-          // Try to extract the filename and use local path as fallback
-          try {
-            const filename = primaryUrl.split('/').pop();
-            // Make sure we're using the correct extension for the fallback URL
-            const extension = filename.includes('.') ? '' : '.cha';
-            const localUrl = `${this.getBaseUrl()}${this.teaFolder}${filename}${extension}`;
-            
-            console.log('Trying fallback URL:', localUrl);
-            
-            const fallbackResponse = await fetch(localUrl);
-            
-            if (!fallbackResponse.ok) {
-              throw new Error(`Fallback HTTP error! Status: ${fallbackResponse.status}`);
-            }
-            
-            return await fallbackResponse.json();
-          } catch (fallbackError) {
-            console.error('Fallback fetch failed:', fallbackError);
-            throw primaryError; // Re-throw the original error
+          // Try local path as fallback
+          const filename = primaryUrl.split('/').pop();
+          const extension = filename.includes('.') ? '' : '.cha';
+          const localUrl = `${this.baseUrl}${this.teaFolder}${filename}${extension}`;
+          
+          console.log('Trying fallback URL:', localUrl);
+          
+          const fallbackResponse = await fetch(localUrl);
+          
+          if (!fallbackResponse.ok) {
+            throw new Error(`Fallback HTTP error! Status: ${fallbackResponse.status}`);
           }
+          
+          return await fallbackResponse.json();
         }
       };
       
@@ -445,8 +322,7 @@ registerAudioUnlockEvents() {
     if (this.teaTimer && teaData) {
       this.teaTimer.setTeaData(teaData);
       
-      // Make sure drawer is opened after setting tea data
-      // This is redundant but ensures the drawer is visible
+      // Make sure drawer is opened
       setTimeout(() => {
         this.teaTimer.openDrawer();
       }, 100);
@@ -458,16 +334,16 @@ registerAudioUnlockEvents() {
     const element = event.detail.element;
     
     if (element) {
-      // Add to browser history so back button works
+      // Add to browser history 
       history.pushState({ detailView: true, teaId: teaData.id }, '', `#tea/${teaData.id}`);
       
-      // Set the detail-view attribute to true
+      // Set the detail view attribute
       element.setAttribute('detail-view', 'true');
     }
   }
   
   handlePopState(event) {
-    // Handle browser back button press
+    // Handle browser back button
     const detailViewElements = document.querySelectorAll('tea-card[detail-view="true"]');
     
     detailViewElements.forEach(element => {
@@ -484,17 +360,11 @@ registerAudioUnlockEvents() {
   }
   
   async handleManualInput() {
-    // First, ask for the tea ID
     const teaId = prompt('Enter the tea ID (e.g., 000, 010):');
     
     if (teaId) {
-      // Construct the URL with proper base URL
-      const baseUrl = this.getBaseUrl();
-      const url = `${baseUrl}${this.teaFolder}${teaId}.cha`;
-      
+      const url = `${this.baseUrl}${this.teaFolder}${teaId}.cha`;
       console.log('Manual input URL:', url);
-      
-      // Process the URL as if it was scanned
       await this.handleNFCRead(url);
     }
   }
@@ -527,8 +397,6 @@ registerAudioUnlockEvents() {
     });
     
     messageElement.appendChild(closeButton);
-    
-    // Add to container
     this.messageContainer.appendChild(messageElement);
     
     // Auto-remove after 5 seconds
@@ -539,8 +407,6 @@ registerAudioUnlockEvents() {
     }, 5000);
   }
 }
-
-
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
