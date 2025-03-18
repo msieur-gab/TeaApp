@@ -264,7 +264,7 @@ body.detail-view-active {
   background-color: transparent;
   padding: 2px 5px;
   border-radius: 3px;
-  z-index: 50;
+  z-index: 500;
   cursor: pointer;
   user-select: none;
   transition: all 0.2s ease;
