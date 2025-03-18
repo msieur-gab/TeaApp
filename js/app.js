@@ -1,6 +1,6 @@
 // scripts/app.js
 // Version constants
-const APP_VERSION = 'v0.0.81'; // Update this whenever you make changes
+const APP_VERSION = 'v0.0.83'; // Update this whenever you make changes
 const APP_BUILD_DATE = '2025-03-18'; // Update this with your build date
 
 

@@ -70,6 +70,12 @@ class ThemeColorManager {
 
     // Update CSS variables
     this.updateCSSVariables(color);
+    
+    // Apply color to document root for navigation bar in PWA mode
+    if (window.matchMedia('(display-mode: standalone)').matches || 
+        window.navigator.standalone) {
+      document.documentElement.style.backgroundColor = color;
+    }
   }
 
   /**
@@ -103,6 +109,12 @@ class ThemeColorManager {
           --app-bar-color: ${color};
           --text-on-app-bar: ${textColor};
           --app-bar-shadow: 0 2px 4px ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.2)'};
+        }
+        
+        @media (display-mode: standalone) {
+          html, body {
+            background-color: ${color};
+          }
         }
       `;
     }
@@ -154,6 +166,48 @@ class ThemeColorManager {
       window.removeEventListener('scroll', this.scrollListener);
       this.scrollListener = null;
     }
+  }
+
+  /**
+   * Make the status bar transparent for immersive content
+   * Content will flow underneath the status bar
+   */
+  setTransparentStatusBar() {
+    // Set transparent status bar for iOS
+    let appleStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (appleStatusBar) {
+      appleStatusBar.content = 'black-translucent';
+    }
+    
+    // Set transparent status bar for Android
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.content = 'transparent';
+    }
+    
+    // Add CSS class to body for proper padding/layout
+    document.body.classList.add('transparent-status-bar');
+  }
+
+  /**
+   * Reset status bar to its default color
+   * @param {string} color - Color to reset to
+   */
+  resetStatusBar(color = this.defaultThemeColor) {
+    // Reset iOS status bar
+    let appleStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (appleStatusBar) {
+      appleStatusBar.content = this.isColorLight(color) ? 'black' : 'black-translucent';
+    }
+    
+    // Reset Android status bar
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.content = color;
+    }
+    
+    // Remove CSS class from body
+    document.body.classList.remove('transparent-status-bar');
   }
 }
 

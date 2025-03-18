@@ -41,13 +41,6 @@ body.detail-view-active {
   z-index: 10;
 }
 
-.app-header .action-button {
-  background-color: var(--text-on-app-bar, #4a90e2);
-  color: var(--app-bar-color, white);
-  opacity: 0.9;
-  border: none;
-  /* keep other properties */
-}
 
 .menu-toggle-container {
   margin-right: 1rem;
@@ -324,5 +317,74 @@ body.detail-view-active {
 @media (max-width: 767px) {
   .version-display {
     font-size: 0.65rem;
+  }
+}
+
+
+
+/* Handle transparent status bar */
+.transparent-status-bar {
+  /* Add padding for iOS status bar */
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+/* Immersive mode for content that flows under the status bar */
+.immersive-view {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  background-color: white;
+  overflow-y: auto;
+  
+  /* Account for safe areas */
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Immersive header that respects status bar */
+.immersive-header {
+  position: sticky;
+  top: 0;
+  background-color: transparent;
+  padding-top: env(safe-area-inset-top, 0);
+  z-index: 5;
+  transition: background-color 0.3s ease;
+}
+
+/* Transparent app header for immersive views */
+.app-header.transparent {
+  background-color: transparent;
+  box-shadow: none;
+  color: white;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 95;
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+/* Ensure the menu toggle and action buttons are visible on transparent header */
+.app-header.transparent .menu-toggle-btn span {
+  background-color: white;
+}
+
+.app-header.transparent .action-button {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* For PWA mode specifically */
+@media (display-mode: standalone) {
+  .transparent-status-bar {
+    /* Ensure top padding works correctly in PWA mode */
+    padding-top: env(safe-area-inset-top, 20px);
+  }
+  
+  .app-header.transparent {
+    padding-top: env(safe-area-inset-top, 20px);
   }
 }
