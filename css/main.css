@@ -251,3 +251,46 @@ body.detail-view-active {
     grid-template-columns: 1fr;
   }
 }
+
+
+
+/* Version display */
+.version-display {
+  position: fixed;
+  bottom: 5px;
+  right: 5px;
+  font-size: 0.7rem;
+  color: rgba(0, 0, 0, 0.4);
+  background-color: transparent;
+  padding: 2px 5px;
+  border-radius: 3px;
+  z-index: 50;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  font-family: monospace;
+}
+
+.version-display:hover {
+  color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.version-display[data-expanded="true"] {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: rgba(0, 0, 0, 0.8);
+  padding: 2px 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Adjust position when timer drawer is open */
+.timer-drawer[style*="translateY(0)"] ~ .version-display {
+  bottom: calc(100% - 50px);
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .version-display {
+    font-size: 0.65rem;
+  }
+}

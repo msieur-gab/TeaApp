@@ -1,4 +1,8 @@
 // scripts/app.js
+// Version constants
+const APP_VERSION = 'v0.0.7'; // Update this whenever you make changes
+const APP_BUILD_DATE = '2025-03-18'; // Update this with your build date
+
 
 import NFCHandler from './nfc-handler.js';
 import teaDB from './db.js';
@@ -39,6 +43,7 @@ class TeaApp {
     // Show loader while initializing
     this.showLoader();
     
+    
     try {
       // Initialize UI elements
       this.initUI();
@@ -60,6 +65,9 @@ class TeaApp {
       
       // Load categories
       await this.loadCategories();
+
+      // Display version number
+      this.displayAppVersion();
       
       console.log('Tea app initialized');
       this.showMessage('App ready! Scan a tea tag or browse your collection.', 'info');
@@ -83,6 +91,78 @@ class TeaApp {
       }
     }
     return false;
+  }
+
+  displayAppVersion() {
+    // Create version display element
+    const versionDisplay = document.createElement('div');
+    versionDisplay.className = 'version-display';
+    versionDisplay.textContent = APP_VERSION;
+    versionDisplay.title = `Build: ${APP_BUILD_DATE}`;
+    versionDisplay.setAttribute('data-expanded', 'false');
+    
+    // Set up variables for double-tap detection
+    let lastTap = 0;
+    
+    // Add tap/click functionality
+    versionDisplay.addEventListener('click', (event) => {
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTap;
+      
+      // Check for double-tap
+      if (tapLength < 500 && tapLength > 0) {
+        // Double tap detected
+        event.preventDefault();
+        
+        // Show confirmation
+        if (confirm('Force reload the application?')) {
+          // Clear cache and reload
+          if ('caches' in window) {
+            caches.keys().then(keyList => {
+              return Promise.all(keyList.map(key => {
+                console.log('Deleting cache', key);
+                return caches.delete(key);
+              }));
+            }).then(() => {
+              console.log('Caches cleared, reloading page');
+              window.location.reload(true);
+            }).catch(err => {
+              console.error('Error clearing caches:', err);
+              // Reload anyway
+              window.location.reload(true);
+            });
+          } else {
+            // If caches API not available, just force reload
+            window.location.reload(true);
+          }
+        }
+      } else {
+        // Single tap - just toggle expanded view
+        const isExpanded = versionDisplay.getAttribute('data-expanded') === 'true';
+        
+        if (isExpanded) {
+          versionDisplay.textContent = APP_VERSION;
+          versionDisplay.setAttribute('data-expanded', 'false');
+        } else {
+          versionDisplay.textContent = `${APP_VERSION} (${APP_BUILD_DATE})`;
+          versionDisplay.setAttribute('data-expanded', 'true');
+          
+          // Auto-collapse after 3 seconds
+          setTimeout(() => {
+            versionDisplay.textContent = APP_VERSION;
+            versionDisplay.setAttribute('data-expanded', 'false');
+          }, 3000);
+        }
+      }
+      
+      lastTap = currentTime;
+    });
+    
+    // Append to body
+    document.body.appendChild(versionDisplay);
+    
+    // Log version to console (if available)
+    console.log(`Tea App ${APP_VERSION} (${APP_BUILD_DATE})`);
   }
 
   initNFC() {
