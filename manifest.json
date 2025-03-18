@@ -1,5 +1,5 @@
 {
-  "display": "standalone",
+  "display": "fullscreen",
   "name": "Tea Timer Collection",
   "short_name": "Tea Timer",
   "description": "An app to track your tea collection and steep the perfect cup",
