@@ -42,10 +42,19 @@ class TeaApp {
   }
   
   initDevTools() {
-    // Enable theme tester in development mode
-    const isDevelopment = window.location.hostname === 'localhost' || 
-                         window.location.hostname === '127.0.0.1' ||
-                         window.location.search.includes('dev=1');
+    // Check for dev mode in localStorage, URL parameter, or localhost
+    const devModeParam = window.location.search.includes('dev=1');
+    const devModeStorage = localStorage.getItem('teaAppDevMode') === 'true';
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1';
+    
+    // Enable when any of these conditions are true
+    const isDevelopment = isLocalhost || devModeParam || devModeStorage;
+    
+    // If URL parameter is set, store the preference in localStorage
+    if (devModeParam) {
+      localStorage.setItem('teaAppDevMode', 'true');
+    }
                          
     if (isDevelopment) {
       console.log('Development mode enabled - adding theme tester');
@@ -55,21 +64,54 @@ class TeaApp {
       testerButton.id = 'theme-tester-toggle';
       testerButton.textContent = '🎨';
       testerButton.title = 'Toggle Theme Tester';
+      
+      // Check if we're in PWA mode
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                    window.navigator.standalone || 
+                    document.referrer.includes('android-app://');
+      
+      // Adjust position based on PWA status
+      const bottomPosition = isPWA ? '70px' : '20px';
+      
       testerButton.style.cssText = `
         position: fixed;
-        bottom: 20px;
+        bottom: ${bottomPosition};
         right: 20px;
-        width: 50px;
-        height: 50px;
+        width: 56px;
+        height: 56px;
         border-radius: 50%;
         background-color: #4a90e2;
         color: white;
         border: none;
         font-size: 24px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
         cursor: pointer;
         z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: scale(1);
+        transition: transform 0.3s ease, background-color 0.3s ease;
       `;
+      
+      // Add hover and active states
+      testerButton.addEventListener('mouseenter', () => {
+        testerButton.style.transform = 'scale(1.1)';
+        testerButton.style.backgroundColor = '#3a80d2';
+      });
+      
+      testerButton.addEventListener('mouseleave', () => {
+        testerButton.style.transform = 'scale(1)';
+        testerButton.style.backgroundColor = '#4a90e2';
+      });
+      
+      testerButton.addEventListener('mousedown', () => {
+        testerButton.style.transform = 'scale(0.95)';
+      });
+      
+      testerButton.addEventListener('mouseup', () => {
+        testerButton.style.transform = 'scale(1.1)';
+      });
       
       testerButton.addEventListener('click', () => {
         themeTester.toggle();

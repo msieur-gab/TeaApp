@@ -147,6 +147,25 @@ class ThemeTester {
     
     scrollTestContainer.appendChild(scrollTestBtn);
     tester.appendChild(scrollTestContainer);
+    
+    // Add dev mode persistence toggle
+    const devModeContainer = document.createElement('div');
+    devModeContainer.className = 'tester-option';
+    
+    const devModeToggle = document.createElement('label');
+    devModeToggle.className = 'toggle-switch';
+    const isDevMode = localStorage.getItem('teaAppDevMode') === 'true';
+    devModeToggle.innerHTML = `
+      <input type="checkbox" id="dev-mode-toggle" ${isDevMode ? 'checked' : ''}>
+      <span class="toggle-slider"></span>
+    `;
+    
+    const devModeLabel = document.createElement('span');
+    devModeLabel.textContent = 'Keep Tester in PWA';
+    
+    devModeContainer.appendChild(devModeToggle);
+    devModeContainer.appendChild(devModeLabel);
+    tester.appendChild(devModeContainer);
 
     // Add styles for the tester
     const style = document.createElement('style');
@@ -337,6 +356,18 @@ class ThemeTester {
     
     document.querySelector('.scroll-test-btn').addEventListener('click', () => {
       this.showScrollTest();
+    });
+    
+    // Dev mode toggle event listener
+    document.getElementById('dev-mode-toggle').addEventListener('change', (e) => {
+      localStorage.setItem('teaAppDevMode', e.target.checked ? 'true' : 'false');
+      
+      // Show message about refreshing or restarting the app
+      const message = e.target.checked ? 
+        'Theme tester will remain available in PWA mode. Changes take effect on refresh.' : 
+        'Theme tester will be disabled in PWA mode after refreshing.';
+      
+      alert(message);
     });
   }
 
