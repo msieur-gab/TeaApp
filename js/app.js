@@ -1,6 +1,6 @@
 // scripts/app.js
 // Version constants
-const APP_VERSION = 'v0.0.7'; // Update this whenever you make changes
+const APP_VERSION = 'v0.0.8'; // Update this whenever you make changes
 const APP_BUILD_DATE = '2025-03-18'; // Update this with your build date
 
 
@@ -11,6 +11,8 @@ import './components/tea-timer.js';
 import './components/tea-menu.js';
 import notificationService from './services/notification-service.js';
 import wakeLockService from './services/wake-lock-service.js';
+import themeColorManager from './utils/theme-color-manager.js';
+import themeTester from './utils/theme-tester.js';
 
 class TeaApp {
   constructor() {
@@ -39,6 +41,51 @@ class TeaApp {
     return url.origin + pathname;
   }
   
+  initDevTools() {
+    // Enable theme tester in development mode
+    const isDevelopment = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1' ||
+                         window.location.search.includes('dev=1');
+                         
+    if (isDevelopment) {
+      console.log('Development mode enabled - adding theme tester');
+      
+      // Create a floating button to toggle the theme tester
+      const testerButton = document.createElement('button');
+      testerButton.id = 'theme-tester-toggle';
+      testerButton.textContent = '🎨';
+      testerButton.title = 'Toggle Theme Tester';
+      testerButton.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: #4a90e2;
+        color: white;
+        border: none;
+        font-size: 24px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        z-index: 999;
+      `;
+      
+      testerButton.addEventListener('click', () => {
+        themeTester.toggle();
+      });
+      
+      document.body.appendChild(testerButton);
+      
+      // Add keyboard shortcut (Shift+T)
+      document.addEventListener('keydown', (e) => {
+        if (e.shiftKey && e.key === 'T') {
+          themeTester.toggle();
+        }
+      });
+    }
+  }
+
   async init() {
     // Show loader while initializing
     this.showLoader();
@@ -47,6 +94,11 @@ class TeaApp {
     try {
       // Initialize UI elements
       this.initUI();
+
+      // Initialize theme color manager
+    themeColorManager.resetThemeColor();
+
+    this.initDevTools();
       
       // Register service worker
       await this.registerServiceWorker();
