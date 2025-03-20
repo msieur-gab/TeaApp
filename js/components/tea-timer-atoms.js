@@ -607,6 +607,7 @@ export class DrawerHandle extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+    this._handleClick = this.handleClick.bind(this);
   }
 
   connectedCallback() {
@@ -619,11 +620,17 @@ export class DrawerHandle extends HTMLElement {
   }
 
   addEventListeners() {
-    this.shadowRoot.querySelector('.drawer-handle')?.addEventListener('click', this.handleClick.bind(this));
+    const handle = this.shadowRoot.querySelector('.drawer-handle');
+    if (handle) {
+      handle.addEventListener('click', this._handleClick);
+    }
   }
 
   removeEventListeners() {
-    this.shadowRoot.querySelector('.drawer-handle')?.removeEventListener('click', this.handleClick.bind(this));
+    const handle = this.shadowRoot.querySelector('.drawer-handle');
+    if (handle) {
+      handle.removeEventListener('click', this._handleClick);
+    }
   }
 
   handleClick() {

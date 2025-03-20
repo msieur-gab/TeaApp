@@ -27,7 +27,7 @@ class TeaTimer extends HTMLElement {
     // Bind methods
     this.handleTimerUpdate = this.handleTimerUpdate.bind(this);
     this.handleTimerStateChange = this.handleTimerStateChange.bind(this);
-    this.handleDrawerToggle = this.toggleDrawer.bind(this);
+    this.handleDrawerToggle = this.handleDrawerToggle.bind(this);
     this.handleTouchStart = this.handleTouchStart.bind(this);
     this.handleTouchMove = this.handleTouchMove.bind(this);
     this.handleTouchEnd = this.handleTouchEnd.bind(this);
@@ -274,7 +274,7 @@ class TeaTimer extends HTMLElement {
       
       setTimeout(() => {
         this.animationInProgress = false;
-        this.render();
+        this.style.pointerEvents = 'auto';
       }, 300);
     }
   }
@@ -285,13 +285,14 @@ class TeaTimer extends HTMLElement {
     
     const drawerElement = this.shadowRoot.querySelector('.timer-drawer');
     if (drawerElement) {
-      const height = this.drawerHeight - 50;
+      // Make sure we're using the full height minus just the handle height
+      const height = this.drawerHeight;
       drawerElement.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
-      drawerElement.style.transform = `translateY(${height}px)`;
+      drawerElement.style.transform = `translateY(${height}px)`; // coould have a height 50px, to keep displaying tea name.
       
       setTimeout(() => {
         this.animationInProgress = false;
-        this.render();
+        this.style.pointerEvents = 'none';
       }, 300);
     }
   }
@@ -583,6 +584,10 @@ class TeaTimer extends HTMLElement {
     `;
     
     this.setupEventListeners();
+  }
+
+  handleDrawerToggle() {
+    this.toggleDrawer();
   }
 }
 
