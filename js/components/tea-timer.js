@@ -1,6 +1,8 @@
 // scripts/components/tea-timer.js
+// Updated to use atomic components
 
 import timerService from '../services/timer-service.js';
+import './tea-timer-atoms.js';
 
 class TeaTimer extends HTMLElement {
   constructor() {
@@ -25,10 +27,14 @@ class TeaTimer extends HTMLElement {
     // Bind methods
     this.handleTimerUpdate = this.handleTimerUpdate.bind(this);
     this.handleTimerStateChange = this.handleTimerStateChange.bind(this);
-    this.handleDrawerClick = this.toggleDrawer.bind(this);
+    this.handleDrawerToggle = this.toggleDrawer.bind(this);
     this.handleTouchStart = this.handleTouchStart.bind(this);
     this.handleTouchMove = this.handleTouchMove.bind(this);
     this.handleTouchEnd = this.handleTouchEnd.bind(this);
+    this.handleButtonClick = this.handleButtonClick.bind(this);
+    this.handleBrewStyleChange = this.handleBrewStyleChange.bind(this);
+    this.handleTimeChange = this.handleTimeChange.bind(this);
+    this.handleInfusionChange = this.handleInfusionChange.bind(this);
   }
 
   connectedCallback() {
@@ -75,118 +81,122 @@ class TeaTimer extends HTMLElement {
     // Store current value for next comparison
     this.lastOriginalDuration = originalDuration;
     
-    // If duration changed, handle the progress bar transition
-    if (durationChanged) {
-      const progressBar = this.shadowRoot.querySelector('.timer-progress-bar');
-      if (progressBar) {
-        // Temporarily disable transition for instant adjustment
-        progressBar.style.transition = 'none';
-        
-        // Force a reflow to apply the disabled transition
-        progressBar.offsetHeight;
-        
-        // Re-enable transition after a brief moment
-        setTimeout(() => {
-          progressBar.style.transition = 'width 1s linear, background-color 1s ease';
-        }, 10);
-      }
-    }
-    
     // Update the timer display
     this.updateTimerDisplay(timeRemaining, originalDuration);
   }
   
-  
   handleTimerStateChange(state) {
     this.updateButtonStates(state);
   }
+
+  // Event handlers for atomic components
+  handleButtonClick(event) {
+    const buttonType = event.detail.type;
+    
+    switch (buttonType) {
+      case 'start':
+      case 'pause':
+        this.toggleStartPause();
+        break;
+      case 'add-time':
+        this.addTenSeconds();
+        break;
+      case 'reset':
+        this.resetTimer();
+        break;
+    }
+  }
+  
+  handleBrewStyleChange(event) {
+    this.brewStyle = event.detail.checked ? 'gongfu' : 'western';
+    this.currentInfusion = 1;
+    
+    const duration = this.calculateBrewDuration();
+    timerService.startTimer(duration, this.teaData?.name);
+    timerService.pauseTimer();
+    
+    // Update the UI elements without a full re-render
+    this.updateBrewStyleUI();
+  }
+  
+  // Add this new method to update UI elements related to brew style
+  updateBrewStyleUI() {
+    // Update infusion controls visibility
+    const infusionControls = this.shadowRoot.querySelector('infusion-controls');
+    if (infusionControls) {
+      infusionControls.setAttribute('visible', this.brewStyle === 'gongfu' ? 'true' : 'false');
+      infusionControls.setAttribute('current', this.currentInfusion);
+    }
+    
+    // Update brew style toggle (without recreating it)
+    const brewStyleToggle = this.shadowRoot.querySelector('brew-style-toggle');
+    if (brewStyleToggle) {
+      if (this.brewStyle === 'gongfu' && !brewStyleToggle.hasAttribute('checked')) {
+        brewStyleToggle.setAttribute('checked', '');
+      } else if (this.brewStyle === 'western' && brewStyleToggle.hasAttribute('checked')) {
+        brewStyleToggle.removeAttribute('checked');
+      }
+    }
+  }
+  
+  handleTimeChange(event) {
+    if (timerService.isTimerRunning()) return;
+    
+    const { totalSeconds } = event.detail;
+    if (totalSeconds > 0) {
+      timerService.startTimer(totalSeconds, this.teaData?.name);
+      timerService.pauseTimer();
+    }
+  }
+  
+  handleInfusionChange(event) {
+    this.currentInfusion = event.detail.infusion;
+    
+    const duration = this.calculateBrewDuration();
+    timerService.startTimer(duration, this.teaData?.name);
+    timerService.pauseTimer();
+    
+    // Instead of full re-render, just update the necessary parts
+    const infusionControls = this.shadowRoot.querySelector('infusion-controls');
+    if (infusionControls) {
+      infusionControls.setAttribute('current', this.currentInfusion);
+    }
+    
+    // Update the timer display without full re-render
+    const timeRemaining = timerService.getTimeRemaining();
+    const originalDuration = timerService.getOriginalDuration();
+    this.updateTimerDisplay(timeRemaining, originalDuration);
+  }
   
   setupEventListeners() {
-    // Drawer handle
-    const handle = this.shadowRoot.querySelector('.drawer-handle');
+    // Listen for custom events from atomic components
+    this.shadowRoot.addEventListener('timer-button-click', this.handleButtonClick);
+    this.shadowRoot.addEventListener('brew-style-change', this.handleBrewStyleChange);
+    this.shadowRoot.addEventListener('time-change', this.handleTimeChange);
+    this.shadowRoot.addEventListener('infusion-change', this.handleInfusionChange);
+    this.shadowRoot.addEventListener('drawer-toggle', this.handleDrawerToggle);
+    
+    // Set up touch events for drawer
+    const handle = this.shadowRoot.querySelector('drawer-handle');
     if (handle) {
-      handle.addEventListener('click', this.handleDrawerClick);
       handle.addEventListener('touchstart', this.handleTouchStart, { passive: true });
       handle.addEventListener('touchmove', this.handleTouchMove, { passive: false });
       handle.addEventListener('touchend', this.handleTouchEnd, { passive: true });
     }
-    
-    // Button controls
-    this.shadowRoot.querySelector('.start-pause-button')?.addEventListener('click', () => this.toggleStartPause());
-    this.shadowRoot.querySelector('.add-time-button')?.addEventListener('click', () => this.addTenSeconds());
-    this.shadowRoot.querySelector('.reset-button')?.addEventListener('click', () => this.resetTimer());
-    
-    // Time inputs
-    const minutesInput = this.shadowRoot.querySelector('.minutes-input');
-    const secondsInput = this.shadowRoot.querySelector('.seconds-input');
-    
-    if (minutesInput) {
-      minutesInput.addEventListener('focus', () => this.handleTimeInput(minutesInput, true));
-      minutesInput.addEventListener('blur', () => this.handleTimeInput(minutesInput, false));
-      minutesInput.addEventListener('input', (e) => e.target.value = e.target.value.replace(/[^0-9]/g, ''));
-    }
-    
-    if (secondsInput) {
-      secondsInput.addEventListener('focus', () => this.handleTimeInput(secondsInput, true));
-      secondsInput.addEventListener('blur', () => this.handleTimeInput(secondsInput, false));
-      secondsInput.addEventListener('input', (e) => e.target.value = e.target.value.replace(/[^0-9]/g, ''));
-    }
-    
-    // Brew style toggle
-    this.shadowRoot.querySelector('.brew-style-toggle')?.addEventListener('change', (e) => this.handleBrewStyleChange(e));
-    
-    // Infusion controls
-    this.shadowRoot.querySelector('.prev-infusion-btn')?.addEventListener('click', () => this.previousInfusion());
-    this.shadowRoot.querySelector('.next-infusion-btn')?.addEventListener('click', () => this.nextInfusion());
   }
   
   removeEventListeners() {
-    // We'll use the newer approach of removing listeners by not explicitly removing each one
-    // This simplifies the code and avoids potential memory leaks
-    // The shadowRoot will be garbage collected along with its event listeners
-  }
-  
-  // Simplified time input handling
-  handleTimeInput(input, isFocusing) {
-    this.isEditing = isFocusing;
+    this.shadowRoot.removeEventListener('timer-button-click', this.handleButtonClick);
+    this.shadowRoot.removeEventListener('brew-style-change', this.handleBrewStyleChange);
+    this.shadowRoot.removeEventListener('time-change', this.handleTimeChange);
+    this.shadowRoot.removeEventListener('infusion-change', this.handleInfusionChange);
+    this.shadowRoot.removeEventListener('drawer-toggle', this.handleDrawerToggle);
     
-    if (isFocusing) {
-      input.select();
-    } else {
-      this.validateTimeInput(input);
-      
-      if (!timerService.isTimerRunning()) {
-        this.applyManualTimeChange();
-      }
-    }
-  }
-  
-  validateTimeInput(input) {
-    let value = parseInt(input.value);
-    const max = 59;
-    
-    if (isNaN(value) || value < 0) {
-      value = 0;
-    } else if (value > max) {
-      value = max;
-    }
-    
-    input.value = value.toString().padStart(2, '0');
-  }
-  
-  applyManualTimeChange() {
-    const minutesInput = this.shadowRoot.querySelector('.minutes-input');
-    const secondsInput = this.shadowRoot.querySelector('.seconds-input');
-    
-    if (minutesInput && secondsInput) {
-      const minutes = parseInt(minutesInput.value) || 0;
-      const seconds = parseInt(secondsInput.value) || 0;
-      const newDuration = minutes * 60 + seconds;
-      
-      if (newDuration > 0) {
-        timerService.startTimer(newDuration, this.teaData?.name);
-        timerService.pauseTimer();
-      }
+    const handle = this.shadowRoot.querySelector('drawer-handle');
+    if (handle) {
+      handle.removeEventListener('touchstart', this.handleTouchStart);
+      handle.removeEventListener('touchmove', this.handleTouchMove);
+      handle.removeEventListener('touchend', this.handleTouchEnd);
     }
   }
   
@@ -324,41 +334,6 @@ class TeaTimer extends HTMLElement {
     }
   }
   
-  handleBrewStyleChange(event) {
-    this.brewStyle = event.target.checked ? 'gongfu' : 'western';
-    this.currentInfusion = 1;
-    
-    const duration = this.calculateBrewDuration();
-    timerService.startTimer(duration, this.teaData?.name);
-    timerService.pauseTimer();
-    
-    this.render();
-  }
-  
-  previousInfusion() {
-    if (this.currentInfusion > 1) {
-      this.currentInfusion--;
-      
-      const duration = this.calculateBrewDuration();
-      timerService.startTimer(duration, this.teaData?.name);
-      timerService.pauseTimer();
-      
-      this.render();
-    }
-  }
-  
-  nextInfusion() {
-    if (this.currentInfusion < 10) {
-      this.currentInfusion++;
-      
-      const duration = this.calculateBrewDuration();
-      timerService.startTimer(duration, this.teaData?.name);
-      timerService.pauseTimer();
-      
-      this.render();
-    }
-  }
-  
   // Timer control methods
   toggleStartPause() {
     if (!this.teaData) return;
@@ -366,8 +341,17 @@ class TeaTimer extends HTMLElement {
     if (timerService.isTimerRunning()) {
       timerService.pauseTimer();
     } else {
-      timerService.resumeTimer();
+      // Make sure we have a valid duration before starting
+      if (timerService.getTimeRemaining() <= 0) {
+        const duration = this.calculateBrewDuration();
+        timerService.startTimer(duration, this.teaData?.name);
+      } else {
+        timerService.resumeTimer();
+      }
     }
+    
+    // Update button state immediately without waiting for the next timer update
+    this.updateButtonStates(timerService.isTimerRunning() ? 'running' : 'paused');
   }
   
   addTenSeconds() {
@@ -381,109 +365,59 @@ class TeaTimer extends HTMLElement {
   
   // UI update methods
   updateTimerDisplay(timeRemaining, originalDuration) {
-    if (this.isEditing) return;
-    
     // Ensure timeRemaining is a valid number
     const validTimeRemaining = Number.isFinite(timeRemaining) ? timeRemaining : 0;
     
-    // Update the time inputs
-    const minutesInput = this.shadowRoot.querySelector('.minutes-input');
-    const secondsInput = this.shadowRoot.querySelector('.seconds-input');
-    
-    if (minutesInput && secondsInput) {
+    // Update the time display component
+    const timeDisplay = this.shadowRoot.querySelector('time-display');
+    if (timeDisplay) {
       const minutes = Math.floor(validTimeRemaining / 60);
       const seconds = validTimeRemaining % 60;
       
-      // Ensure we're setting valid values
-      minutesInput.value = Number.isFinite(minutes) ? minutes.toString().padStart(2, '0') : '00';
-      secondsInput.value = Number.isFinite(seconds) ? seconds.toString().padStart(2, '0') : '00';
+      timeDisplay.setAttribute('minutes', minutes);
+      timeDisplay.setAttribute('seconds', seconds);
+      timeDisplay.setAttribute('editable', !timerService.isTimerRunning());
     }
     
     // Update progress bar
-    const progressBar = this.shadowRoot.querySelector('.timer-progress-bar');
+    const progressBar = this.shadowRoot.querySelector('timer-progress-bar');
     if (progressBar && originalDuration > 0) {
-      // Ensure we calculate a valid percentage
+      // Calculate progress percentage
       const progressPercent = Number.isFinite(validTimeRemaining) && Number.isFinite(originalDuration) 
         ? (validTimeRemaining / originalDuration) * 100
         : 100;
       
-      progressBar.style.width = `${progressPercent}%`;
-      
-      // Change color as time runs out
-      // if (progressPercent < 25) {
-      //   progressBar.style.backgroundColor = '#f44336'; // Red
-      // } else if (progressPercent < 50) {
-      //   progressBar.style.backgroundColor = '#ff9800'; // Orange
-      // } else {
-      //   progressBar.style.backgroundColor = '#4a90e2'; // Blue
-      // }
-
-      if (progressPercent < 10) {
-        progressBar.style.backgroundColor = '#558B2F'; // Deep Green
-      } else if (progressPercent < 25) {
-        progressBar.style.backgroundColor = '#7CB342'; // Medium Green
-      } else if (progressPercent < 50) {
-        progressBar.style.backgroundColor = '#AED581'; // Light Green
-      } else if (progressPercent < 75) {
-        progressBar.style.backgroundColor = '#DCEDC8'; // Pale Green
-      } else {
-        progressBar.style.backgroundColor = '#F1F8E9'; // Very Pale Green
-      }
+      progressBar.setAttribute('progress', progressPercent);
     }
   }
   
   updateButtonStates(state) {
-    const startPauseButton = this.shadowRoot.querySelector('.start-pause-button');
-    const resetButton = this.shadowRoot.querySelector('.reset-button');
-    const minutesInput = this.shadowRoot.querySelector('.minutes-input');
-    const secondsInput = this.shadowRoot.querySelector('.seconds-input');
+    const startPauseButton = this.shadowRoot.querySelector('[type="start"], [type="pause"]');
+    const resetButton = this.shadowRoot.querySelector('[type="reset"]');
     
-    if (!startPauseButton || !resetButton) return;
+    if (!startPauseButton) return;
     
     switch (state) {
       case 'running':
-        startPauseButton.textContent = 'Pause';
-        startPauseButton.classList.remove('start-button');
-        startPauseButton.classList.add('pause-button');
-        resetButton.disabled = true;
-        
-        // Disable time inputs when running
-        if (minutesInput) minutesInput.disabled = true;
-        if (secondsInput) secondsInput.disabled = true;
+        if (startPauseButton.getAttribute('type') !== 'pause') {
+          startPauseButton.setAttribute('type', 'pause');
+        }
+        resetButton?.setAttribute('disabled', 'true');
         break;
         
       case 'stopped':
       case 'paused':
-        startPauseButton.textContent = 'Start';
-        startPauseButton.classList.remove('pause-button');
-        startPauseButton.classList.add('start-button');
-        resetButton.disabled = false;
-        
-        // Enable time inputs when paused
-        if (minutesInput) minutesInput.disabled = false;
-        if (secondsInput) secondsInput.disabled = false;
-        break;
-        
       case 'reset':
-        startPauseButton.textContent = 'Start';
-        startPauseButton.classList.remove('pause-button');
-        startPauseButton.classList.add('start-button');
-        resetButton.disabled = true;
-        
-        // Enable time inputs when reset
-        if (minutesInput) minutesInput.disabled = false;
-        if (secondsInput) secondsInput.disabled = false;
-        break;
-        
       case 'completed':
-        startPauseButton.textContent = 'Start';
-        startPauseButton.classList.remove('pause-button');
-        startPauseButton.classList.add('start-button');
-        resetButton.disabled = false;
+        if (startPauseButton.getAttribute('type') !== 'start') {
+          startPauseButton.setAttribute('type', 'start');
+        }
         
-        // Enable time inputs when completed
-        if (minutesInput) minutesInput.disabled = false;
-        if (secondsInput) secondsInput.disabled = false;
+        if (state === 'reset') {
+          resetButton?.setAttribute('disabled', 'true');
+        } else {
+          resetButton?.removeAttribute('disabled');
+        }
         break;
     }
   }
@@ -509,35 +443,6 @@ class TeaTimer extends HTMLElement {
         transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
         overflow: hidden;
       }
-
-      .drawer-handle {
-        height: 50px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-        position: relative;
-        user-select: none;
-        touch-action: none;
-        pointer-events: auto;
-      }
-      
-      .drawer-handle::before {
-        content: '';
-        width: 40px;
-        height: 4px;
-        background-color: #ddd;
-        border-radius: 2px;
-        transition: transform 0.2s ease, background-color 0.2s ease;
-      }
-      
-      .drawer-handle:hover::before {
-        background-color: #ccc;
-      }
-      
-      .drawer-handle:active::before {
-        transform: scaleX(0.9);
-      }
       
       .timer-drawer-content {
         padding: 0 1.5rem 1.5rem;
@@ -561,180 +466,21 @@ class TeaTimer extends HTMLElement {
         text-overflow: ellipsis;
       }
       
-      .brew-style-container {
-        margin: 1rem 0;
+      .brew-controls-row {
         display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      
-      .brew-style-toggle {
-        position: relative;
-        display: inline-block;
-        width: 60px;
-        height: 30px;
-        margin: 0 10px;
-      }
-      
-      .brew-style-toggle input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-      }
-      
-      .toggle-slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 30px;
-      }
-      
-      .toggle-slider:before {
-        position: absolute;
-        content: "";
-        height: 22px;
-        width: 22px;
-        left: 4px;
-        bottom: 4px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-      }
-      
-      input:checked + .toggle-slider {
-        background-color: #2196F3;
-      }
-      
-      input:checked + .toggle-slider:before {
-        transform: translateX(30px);
-      }
-      
-      .brew-style-label {
-        font-size: 0.9rem;
-        color: #666;
-      }
-      
-      .brew-style-label.active {
-        font-weight: bold;
-        color: #333;
-      }
-      
-      .infusion-controls {
-        display: ${this.brewStyle === 'gongfu' ? 'flex' : 'none'};
         align-items: center;
         justify-content: center;
         margin-bottom: 1rem;
-        padding: 0.5rem;
-        border-radius: 8px;
-        transition: background-color 0.3s ease;
+        gap: 1rem;
       }
       
-      .infusion-controls button {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        color: #666;
-        cursor: pointer;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: color 0.2s ease;
+      .brew-controls-row > brew-style-toggle,
+      .brew-controls-row > infusion-controls {
+        flex: 0 0 auto;
       }
       
-      .infusion-controls button:hover {
-        color: #333;
-      }
-      
-      .infusion-controls button:disabled {
-        color: #ccc;
-        cursor: not-allowed;
-      }
-      
-      .infusion-number {
-        font-size: 1rem;
-        font-weight: bold;
-        margin: 0 1rem;
-      }
-      
-      .timer-display-container {
-        position: relative;
-        width: 100%;
-        margin-bottom: 1.5rem;
-      }
-      
-      .timer-progress-bar-container {
-        width: 100%;
-        height: 6px;
-        background-color: #f0f0f0;
-        border-radius: 3px;
-        overflow: hidden;
-        margin-bottom: 0.5rem;
-      }
-      
-      .timer-progress-bar {
-        height: 100%;
-        background-color: #E8F5E9;
-        width: 100%;
-        transition: width 1s linear, background-color 1s ease;
-      }
-      
-      .timer-display {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 4rem;
-        text-align: center;
-        font-weight: bold;
-        margin: 1rem 0;
-        font-variant-numeric: tabular-nums;
-        font-feature-settings: "tnum";
-      }
-      
-      .timer-display input {
-        width: 80px;
-        background: transparent;
-        border: none;
-        font-size: inherit;
-        text-align: center;
-        font-weight: inherit;
-        color: inherit;
-        font-family: inherit;
-        padding: 0;
-        margin: 0;
-        transition: background-color 0.2s ease;
-      }
-      
-      .timer-display input:focus {
-        outline: none;
-        background-color: rgba(74, 144, 226, 0.1);
-        border-radius: 8px;
-      }
-      
-      .timer-display input:disabled {
-        opacity: 1;
-        color: inherit;
-      }
-      
-      .timer-display-separator {
-        margin: 0 5px;
-      }
-      
-      /* Remove spinner arrows from number inputs */
-      .timer-display input::-webkit-outer-spin-button,
-      .timer-display input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-      
-      .timer-display input[type="number"] {
-        -moz-appearance: textfield;
+      .spacer {
+        flex: 1;
       }
       
       .timer-info {
@@ -751,94 +497,15 @@ class TeaTimer extends HTMLElement {
         justify-content: center;
       }
       
-      .timer-button {
-        padding: 0.75rem 1rem;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 1rem;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 100px;
-      }
-      
-      .start-button {
-        background-color: #4CAF50;
-        color: white;
-      }
-      
-      .start-button:hover:not(:disabled) {
-        background-color: #45a049;
-        transform: translateY(-2px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      }
-      
-      .pause-button {
-        background-color: #ff9800;
-        color: white;
-      }
-      
-      .pause-button:hover:not(:disabled) {
-        background-color: #f57c00;
-        transform: translateY(-2px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      }
-      
-      .add-time-button {
-        background-color: #2196F3;
-        color: white;
-      }
-      
-      .add-time-button:hover:not(:disabled) {
-        background-color: #0b7dda;
-        transform: translateY(-2px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      }
-      
-      .reset-button {
-        background-color: #808080;
-        color: white;
-      }
-      
-      .reset-button:hover:not(:disabled) {
-        background-color: #707070;
-        transform: translateY(-2px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      }
-      
-      .timer-button:active:not(:disabled) {
-        transform: translateY(0);
-        box-shadow: none;
-      }
-      
-      .timer-button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-      }
-      
       @media (max-width: 480px) {
-        .timer-display {
-          font-size: 3rem;
-        }
-        
-        .timer-display input {
-          width: 60px;
-        }
-        
-        .timer-button {
-          padding: 0.5rem 1rem;
-          min-width: 80px;
-          font-size: 0.9rem;
+        .timer-controls {
+          flex-wrap: wrap;
+          gap: 0.5rem;
         }
       }
     `;
     
-    const teaName = this.teaData?.name || 'Select a tea to steep';
+    const teaName = this.teaData ? this.teaData.name : 'Select a tea to steep';
     
     // Determine temperature info based on brew style
     let tempInfo = '';
@@ -854,81 +521,68 @@ class TeaTimer extends HTMLElement {
       ? `Temperature: ${tempInfo}`
       : 'Click on a tea card and press "Steep This Tea" to start';
     
-    // Infusion label for Gongfu
-    const infusionLabel = this.brewStyle === 'gongfu' 
-      ? `Infusion ${this.currentInfusion}`
-      : '';
-      
-    // Get safe time values
+    // Get timer values
     const timeRemaining = timerService.getTimeRemaining();
-    const minutes = Number.isFinite(timeRemaining) ? Math.floor(timeRemaining / 60) : 0;
-    const seconds = Number.isFinite(timeRemaining) ? timeRemaining % 60 : 0;
-    const minutesStr = minutes.toString().padStart(2, '0');
-    const secondsStr = seconds.toString().padStart(2, '0');
+    const minutes = Math.floor(timeRemaining / 60);
+    const seconds = timeRemaining % 60;
+    const isRunning = timerService.isTimerRunning();
+    const originalDuration = timerService.getOriginalDuration();
+    const progress = originalDuration > 0 ? (timeRemaining / originalDuration) * 100 : 100;
+    
+    // Calculate max infusions based on tea data
+    const maxInfusions = this.teaData ? (this.teaData.numberOfInfusions || 10) : 10;
     
     this.shadowRoot.innerHTML = `
       <style>${styles}</style>
       <div class="timer-drawer">
-        <div class="drawer-handle" aria-label="Toggle timer drawer"></div>
+        <drawer-handle></drawer-handle>
         
         <div class="timer-drawer-content">
           <div class="timer-title-row">
             <h3 class="timer-title">${teaName}</h3>
           </div>
           
-          <div class="brew-style-container">
-            <span class="brew-style-label ${this.brewStyle === 'western' ? 'active' : ''}">Western</span>
-            
-            <label class="brew-style-toggle">
-              <input type="checkbox" ${this.brewStyle === 'gongfu' ? 'checked' : ''}>
-              <span class="toggle-slider"></span>
-            </label>
-            
-            <span class="brew-style-label ${this.brewStyle === 'gongfu' ? 'active' : ''}">Gongfu</span>
+          <div class="brew-controls-row">
+            <brew-style-toggle class="control-item" ${this.brewStyle === 'gongfu' ? 'checked' : ''}></brew-style-toggle>
+            <infusion-controls 
+              class="control-item"
+              current="${this.currentInfusion}" 
+              max="${maxInfusions}" 
+              ${this.brewStyle !== 'gongfu' ? 'visible="false"' : ''}>
+            </infusion-controls>
           </div>
           
-          <div class="infusion-controls">
-            <button class="prev-infusion-btn" ${this.currentInfusion <= 1 ? 'disabled' : ''} aria-label="Previous infusion">
-              <span>−</span>
-            </button>
-            <span class="infusion-number">${infusionLabel}</span>
-            <button class="next-infusion-btn" aria-label="Next infusion">
-              <span>+</span>
-            </button>
-          </div>
+          <timer-progress-bar progress="${progress}"></timer-progress-bar>
           
-          <div class="timer-display-container">
-            <div class="timer-progress-bar-container">
-              <div class="timer-progress-bar"></div>
-            </div>
-            
-            <div class="timer-display">
-              <input type="number" class="minutes-input" min="0" max="59" value="${minutesStr}" ${timerService.isTimerRunning() ? 'disabled' : ''}>
-              <span class="timer-display-separator">:</span>
-              <input type="number" class="seconds-input" min="0" max="59" value="${secondsStr}" ${timerService.isTimerRunning() ? 'disabled' : ''}>
-            </div>
-          </div>
+          <time-display 
+            minutes="${minutes}" 
+            seconds="${seconds}" 
+            ${isRunning ? 'editable="false"' : ''}>
+          </time-display>
           
           <p class="timer-info">${teaInfo}</p>
           
           <div class="timer-controls">
-            <button class="timer-button start-pause-button ${timerService.isTimerRunning() ? 'pause-button' : 'start-button'}" ${!this.teaData ? 'disabled' : ''}>
-              ${timerService.isTimerRunning() ? 'Pause' : 'Start'}
-            </button>
-            <button class="timer-button add-time-button" ${!this.teaData ? 'disabled' : ''}>+10s</button>
-            <button class="timer-button reset-button" ${!this.teaData || timerService.isTimerRunning() ? 'disabled' : ''}>Reset</button>
+            <timer-button 
+              type="${isRunning ? 'pause' : 'start'}" 
+              ${!this.teaData ? 'disabled' : ''}>
+            </timer-button>
+            
+            <timer-button 
+              type="add-time" 
+              ${!this.teaData ? 'disabled' : ''}>
+            </timer-button>
+            
+            <timer-button 
+              type="reset" 
+              ${!this.teaData || isRunning ? 'disabled' : ''}>
+            </timer-button>
           </div>
         </div>
       </div>
     `;
     
     this.setupEventListeners();
-    
-    // Update button states based on current timer state
-    this.updateButtonStates(timerService.isTimerRunning() ? 'running' : 'reset');
-    
-    // Update timer display initially
-    this.updateTimerDisplay(timerService.getTimeRemaining(), timerService.getOriginalDuration());
   }
 }
 
