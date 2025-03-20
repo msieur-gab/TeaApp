@@ -1,7 +1,7 @@
 // scripts/app.js
 // Version constants
-const APP_VERSION = 'v0.0.7'; // Update this whenever you make changes
-const APP_BUILD_DATE = '2025-03-18'; // Update this with your build date
+const APP_VERSION = 'v0.0.8'; // Update this whenever you make changes
+const APP_BUILD_DATE = '2025-03-20'; // Update this with your build date
 
 
 import NFCHandler from './nfc-handler.js';

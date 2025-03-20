@@ -1,7 +1,7 @@
 // service-worker.js
 // A simplified but robust service worker implementation for Tea App
 
-const CACHE_NAME = 'tea-timer-v0.0.7';
+const CACHE_NAME = 'tea-timer-v0.0.8';
 const URLS_TO_CACHE = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const URLS_TO_CACHE = [
   './js/components/tea-card.js',
   './js/components/tea-timer.js',
   './js/components/tea-menu.js',
+  './js/components/tea-timer-atoms.js',
   './js/services/notification-service.js',
   './js/services/timer-service.js',
   './js/services/wake-lock-service.js',
