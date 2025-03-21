@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tea Component Library Tester</title>
+  <style>
+    /* Base styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f5f7fa;
+      padding: 20px;
+      transition: background-color 0.3s ease;
+    }
+    
+    h1, h2, h3, h4 {
+      margin-bottom: 20px;
+      color: #2c3e50;
+    }
+    
+    section {
+      background-color: white;
+      margin-bottom: 30px;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+    
+    .section-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .section-title h2 {
+      margin-bottom: 0;
+    }
+    
+    .component-row {
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .component-row:last-child {
+      border-bottom: none;
+    }
+    
+    .component-title {
+      margin-bottom: 10px;
+      font-weight: bold;
+      color: #4a90e2;
+    }
+    
+    .component-demo {
+      padding: 15px;
+      border: 1px dashed #ddd;
+      border-radius: 4px;
+      background-color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 10px;
+      transition: border-color 0.3s ease, background-color 0.3s ease;
+    }
+    
+    .code-sample {
+      padding: 10px;
+      background-color: rgba(245, 245, 245, 0.9);
+      border-radius: 4px;
+      font-family: monospace;
+      overflow-x: auto;
+      font-size: 14px;
+    }
+    
+    /* Tea Category Controls */
+    .tea-controls {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .tea-select {
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      font-size: 1rem;
+      width: 100%;
+    }
+    
+    .tea-color-preview {
+      height: 30px;
+      border-radius: 4px;
+      margin-top: 5px;
+    }
+    
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .control-row input {
+      margin: 0;
+    }
+    
+    /* Color swatches */
+    .color-swatches {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .color-swatch {
+      display: flex;
+      flex-direction: column;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    
+    .color-sample {
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .color-info {
+      padding: 8px;
+      background-color: white;
+      font-size: 12px;
+    }
+    
+    .color-name {
+      font-weight: bold;
+      margin-bottom: 3px;
+    }
+    
+    .color-value {
+      font-family: monospace;
+      color: #666;
+    }
+    
+    /* Variations */
+    .color-variations {
+      margin-top: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .color-variation {
+      display: flex;
+      height: 25px;
+      align-items: center;
+    }
+    
+    .variation-sample {
+      width: 25px;
+      height: 25px;
+      margin-right: 8px;
+      border-radius: 4px;
+    }
+    
+    .variation-name {
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    /* Navigation */
+    nav {
+      background-color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      position: sticky;
+      top: 20px;
+      z-index: 50;
+    }
+    
+    nav a {
+      color: #4a90e2;
+      text-decoration: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      background-color: #f0f7ff;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    
+    nav a:hover {
+      background-color: #4a90e2;
+      color: white;
+    }
+    
+    /* Dark mode adjustments */
+    .dark-text-mode section {
+      color: #333;
+    }
+    
+    .dark-text-mode .section-title h2 {
+      color: #333;
+    }
+    
+    .dark-text-mode .component-title {
+      color: #333;
+    }
+    
+    /* Demo warning */
+    .demo-warning {
+      background-color: #fff3cd;
+      color: #856404;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      border-left: 4px solid #ffc107;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .color-swatches {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tea Component Library & Colors</h1>
+    <p>A visual reference for the Tea App design system</p>
+  </header>
+  
+  <div class="demo-warning">
+    <strong>Important:</strong> This is a demo page to test our component library. Make sure the tea-colors.js and tea-ui.js modules are accessible from the js/utils and js/components/ui directories.
+  </div>
+  
+  <!-- Tea Category Controls -->
+  <div class="tea-controls">
+    <label for="tea-category-select">Tea Category Theme:</label>
+    <select id="tea-category-select" class="tea-select">
+      <option value="none">None (Default)</option>
+      <option value="Green">Green Tea</option>
+      <option value="Yellow">Yellow Tea</option>
+      <option value="White">White Tea</option>
+      <option value="Oolong">Oolong Tea</option>
+      <option value="Black">Black Tea</option>
+      <option value="Pu-erh">Pu-erh Tea</option>
+      <option value="Herbal">Herbal Tea</option>
+    </select>
+    <div id="color-preview" class="tea-color-preview"></div>
+    
+    <div class="control-row">
+      <input type="checkbox" id="text-color-toggle">
+      <label for="text-color-toggle">Adjust text colors for contrast</label>
+    </div>
+    
+    <div class="control-row">
+      <input type="checkbox" id="component-bg-toggle" checked>
+      <label for="component-bg-toggle">Apply to component backgrounds</label>
+    </div>
+    
+    <div class="control-row">
+      <input type="checkbox" id="page-bg-toggle">
+      <label for="page-bg-toggle">Apply to page background</label>
+    </div>
+  </div>
+  
+  <nav id="navigation">
+    <a href="#colors">Tea Colors</a>
+    <a href="#buttons">Buttons</a>
+    <a href="#toggles">Toggles</a>
+    <a href="#tabs">Tabs</a>
+    <a href="#cards">Cards</a>
+    <a href="#badges">Badges</a>
+    <a href="#chips">Chips</a>
+    <a href="#progress">Progress Bars</a>
+  </nav>
+  
+  <!-- Colors Section -->
+  <section id="colors">
+    <div class="section-title">
+      <h2>Tea Colors</h2>
+    </div>
+    
+    <h3>Primary Category Colors</h3>
+    <div class="color-swatches" id="category-swatches">
+      <!-- Will be populated by JS -->
+    </div>
+    
+    <h3>Color Variations (Green Tea Example)</h3>
+    <div class="color-variations" id="green-variations">
+      <!-- Will be populated by JS -->
+    </div>
+  </section>
+  
+  <!-- Buttons Section -->
+  <section id="buttons">
+    <div class="section-title">
+      <h2>Buttons</h2>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Button Variants</div>
+      <div class="component-demo" id="button-variants">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createButton({ text: 'Primary', variant: 'primary' })
+        teaUI.createButton({ text: 'Secondary', variant: 'secondary' })
+        teaUI.createButton({ text: 'Outline', variant: 'outline' })
+        teaUI.createButton({ text: 'Text', variant: 'text' })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Button Sizes</div>
+      <div class="component-demo" id="button-sizes">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createButton({ text: 'Small', size: 'small' })
+        teaUI.createButton({ text: 'Medium', size: 'medium' })
+        teaUI.createButton({ text: 'Large', size: 'large' })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Full Width Button</div>
+      <div class="component-demo" id="button-full-width">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createButton({ text: 'Full Width Button', fullWidth: true })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Disabled Button</div>
+      <div class="component-demo" id="button-disabled">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createButton({ text: 'Disabled Button', disabled: true })
+      </div>
+    </div>
+  </section>
+  
+  <!-- Toggles Section -->
+  <section id="toggles">
+    <div class="section-title">
+      <h2>Toggles</h2>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Basic Toggle</div>
+      <div class="component-demo" id="toggle-basic">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createToggle({ checked: false })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Toggle with Labels</div>
+      <div class="component-demo" id="toggle-labels">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createToggle({ 
+          checked: false, 
+          labelLeft: 'Western', 
+          labelRight: 'Gongfu' 
+        })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Custom Color Toggle</div>
+      <div class="component-demo" id="toggle-color">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createToggle({ 
+          checked: true, 
+          color: '#7B9070' // Green Tea color 
+        })
+      </div>
+    </div>
+  </section>
+  
+  <!-- Tabs Section -->
+  <section id="tabs">
+    <div class="section-title">
+      <h2>Tabs</h2>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Default Tabs</div>
+      <div class="component-demo" id="tabs-default">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createTabs({
+          tabs: [
+            { label: 'Details', content: 'Details tab content' },
+            { label: 'Brewing', content: 'Brewing tab content' },
+            { label: 'Notes', content: 'Notes tab content' }
+          ]
+        })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Pills Tabs</div>
+      <div class="component-demo" id="tabs-pills">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createTabs({
+          tabs: [
+            { label: 'Details', content: 'Details tab content' },
+            { label: 'Brewing', content: 'Brewing tab content' },
+            { label: 'Notes', content: 'Notes tab content' }
+          ],
+          variant: 'pills'
+        })
+      </div>
+    </div>
+  </section>
+  
+  <!-- Cards Section -->
+  <section id="cards">
+    <div class="section-title">
+      <h2>Cards</h2>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Basic Card</div>
+      <div class="component-demo" id="card-basic">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createCard({
+          title: 'Card Title',
+          content: 'This is the card content'
+        })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Card with Footer</div>
+      <div class="component-demo" id="card-footer">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createCard({
+          title: 'Card with Footer',
+          content: 'This card has a footer section',
+          footer: 'Card Footer'
+        })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Card Elevation Levels</div>
+      <div class="component-demo" id="card-elevation">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createCard({
+          title: 'Low Elevation',
+          content: 'Low shadow',
+          elevation: 'low'
+        })
+        
+        teaUI.createCard({
+          title: 'Medium Elevation',
+          content: 'Medium shadow',
+          elevation: 'medium'
+        })
+        
+        teaUI.createCard({
+          title: 'High Elevation',
+          content: 'High shadow',
+          elevation: 'high'
+        })
+      </div>
+    </div>
+  </section>
+  
+  <!-- Badges Section -->
+  <section id="badges">
+    <div class="section-title">
+      <h2>Badges</h2>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Badge Variants</div>
+      <div class="component-demo" id="badge-variants">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createBadge({ text: 'Default', variant: 'default' })
+        teaUI.createBadge({ text: 'Primary', variant: 'primary' })
+        teaUI.createBadge({ text: 'Success', variant: 'success' })
+        teaUI.createBadge({ text: 'Warning', variant: 'warning' })
+        teaUI.createBadge({ text: 'Error', variant: 'error' })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Pill Badges</div>
+      <div class="component-demo" id="badge-pill">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createBadge({ text: 'Default', pill: true })
+        teaUI.createBadge({ text: 'Primary', variant: 'primary', pill: true })
+        teaUI.createBadge({ text: 'Success', variant: 'success', pill: true })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Outline Badges</div>
+      <div class="component-demo" id="badge-outline">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createBadge({ text: 'Default', outline: true })
+        teaUI.createBadge({ text: 'Primary', variant: 'primary', outline: true })
+        teaUI.createBadge({ text: 'Success', variant: 'success', outline: true })
+      </div>
+    </div>
+  </section>
+  
+  <!-- Chips Section -->
+  <section id="chips">
+    <div class="section-title">
+      <h2>Chips</h2>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Basic Chips</div>
+      <div class="component-demo" id="chip-basic">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createChip({ text: 'Basic Chip' })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Closable Chips</div>
+      <div class="component-demo" id="chip-closable">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createChip({ 
+          text: 'Closable Chip', 
+          closable: true 
+        })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Custom Color Chips</div>
+      <div class="component-demo" id="chip-colors">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createChip({ 
+          text: 'Green Tea', 
+          backgroundColor: '#7B9070', 
+          color: 'white' 
+        })
+        
+        teaUI.createChip({ 
+          text: 'Black Tea', 
+          backgroundColor: '#A56256', 
+          color: 'white' 
+        })
+      </div>
+    </div>
+  </section>
+  
+  <!-- Progress Bars Section -->
+  <section id="progress">
+    <div class="section-title">
+      <h2>Progress Bars</h2>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Basic Progress Bar</div>
+      <div class="component-demo" id="progress-basic">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createProgressBar({ value: 50 })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Progress Bar with Percentage</div>
+      <div class="component-demo" id="progress-percentage">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createProgressBar({ 
+          value: 75, 
+          showPercentage: true 
+        })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Striped Progress Bar</div>
+      <div class="component-demo" id="progress-striped">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createProgressBar({ 
+          value: 60, 
+          striped: true 
+        })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Animated Striped Progress Bar</div>
+      <div class="component-demo" id="progress-animated">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createProgressBar({ 
+          value: 80, 
+          striped: true, 
+          animated: true 
+        })
+      </div>
+    </div>
+    
+    <div class="component-row">
+      <div class="component-title">Custom Color Progress Bar</div>
+      <div class="component-demo" id="progress-custom">
+        <!-- Will be populated by JS -->
+      </div>
+      <div class="code-sample">
+        teaUI.createProgressBar({ 
+          value: 40, 
+          color: '#7B9070'  // Green tea color
+        })
+      </div>
+    </div>
+    
+    <div id="tea-themed-progress">
+      <!-- Will be populated when tea type is selected -->
+    </div>
+  </section>
+  
+  <!-- Scripts -->
+  <script type="module">
+    // Import our utilities and components
+    import teaColors from './js/utils/tea-colors.js';
+    import teaUI from './js/components/tea-ui.js';
+    
+    // Wait for DOM content to be fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        // Initialize tea category selector
+        initTeaCategorySelector();
+        
+        // Initialize colors section
+        initColorsSection();
+        
+        // Initialize components
+        initButtons();
+        initToggles();
+        initTabs();
+        initCards();
+        initBadges();
+        initChips();
+        initProgressBars();
+      } catch (error) {
+        console.error('Error initializing component tester:', error);
+        document.body.innerHTML = `
+          <div style="padding: 20px; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; margin: 20px;">
+            <h2>Error Loading Component Tester</h2>
+            <p>${error.message}</p>
+            <p>Make sure you have the following files in the correct locations:</p>
+            <ul>
+              <li>js/utils/tea-colors.js</li>
+              <li>js/components/ui/tea-ui.js</li>
+            </ul>
+          </div>
+        `;
+      }
+    });
+    
+    function initTeaCategorySelector() {
+      const categorySelect = document.getElementById('tea-category-select');
+      const colorPreview = document.getElementById('color-preview');
+      const textToggle = document.getElementById('text-color-toggle');
+      const componentBgToggle = document.getElementById('component-bg-toggle');
+      const pageBgToggle = document.getElementById('page-bg-toggle');
+      
+      // Update the preview and styles when selection changes
+      categorySelect.addEventListener('change', updateStyles);
+      textToggle.addEventListener('change', updateStyles);
+      componentBgToggle.addEventListener('change', updateStyles);
+      pageBgToggle.addEventListener('change', updateStyles);
+      
+      // Initial update
+      updateStyles();
+      
+      function updateStyles() {
+        const category = categorySelect.value;
+        const useTextContrast = textToggle.checked;
+        const useComponentBg = componentBgToggle.checked;
+        const usePageBg = pageBgToggle.checked;
+        
+        if (category === 'none') {
+          // Reset all styles
+          colorPreview.style.backgroundColor = '';
+          document.body.style.backgroundColor = '';
+          document.body.classList.remove('dark-text-mode');
+          
+          const sections = document.querySelectorAll('section');
+          sections.forEach(section => {
+            section.style.backgroundColor = '';
+            section.style.color = '';
+            section.style.borderLeft = '';
+          });
+          
+          const componentDemos = document.querySelectorAll('.component-demo');
+          componentDemos.forEach(demo => {
+            demo.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+            demo.style.borderColor = '#ddd';
+          });
+          
+          // Update any dynamic tea-themed components
+          updateTeaThemedComponents('none');
+          
+          return;
+        }
+        
+        // Get colors for selected category
+        const mainColor = teaColors.getColor(category);
+        const textColor = teaColors.getTextColor(category);
+        const colorVariations = teaColors.getColorVariations(category);
+        
+        // Update preview
+        colorPreview.style.backgroundColor = mainColor;
+        colorPreview.style.borderRadius = '4px';
+        colorPreview.style.border = '1px solid #ddd';
+        
+        // Apply to page background if selected
+        if (usePageBg) {
+          document.body.style.backgroundColor = teaColors.hexToRgba(mainColor, 0.15);
+        } else {
+          document.body.style.backgroundColor = '';
+        }
+        
+        // Apply to component backgrounds if selected
+        if (useComponentBg) {
+          const sections = document.querySelectorAll('section');
+          sections.forEach(section => {
+            section.style.backgroundColor = teaColors.hexToRgba(mainColor, 0.05);
+            section.style.borderLeft = `4px solid ${mainColor}`;
+          });
+          
+          const sectionTitles = document.querySelectorAll('.section-title');
+          sectionTitles.forEach(title => {
+            title.style.borderBottomColor = teaColors.hexToRgba(mainColor, 0.2);
+          });
+          
+          const componentDemos = document.querySelectorAll('.component-demo');
+          componentDemos.forEach(demo => {
+            demo.style.backgroundColor = teaColors.hexToRgba(mainColor, 0.1);
+            demo.style.borderColor = mainColor;
+          });
+          
+          const componentTitles = document.querySelectorAll('.component-title');
+          componentTitles.forEach(title => {
+            title.style.color = mainColor;
+          });
+        } else {
+          const sections = document.querySelectorAll('section');
+          sections.forEach(section => {
+            section.style.backgroundColor = '';
+            section.style.borderLeft = '';
+          });
+          
+          const sectionTitles = document.querySelectorAll('.section-title');
+          sectionTitles.forEach(title => {
+            title.style.borderBottomColor = '';
+          });
+          
+          const componentDemos = document.querySelectorAll('.component-demo');
+          componentDemos.forEach(demo => {
+            demo.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+            demo.style.borderColor = '#ddd';
+          });
+          
+          const componentTitles = document.querySelectorAll('.component-title');
+          componentTitles.forEach(title => {
+            title.style.color = '';
+          });
+        }
+        
+        // Apply text contrast if selected
+        if (useTextContrast) {
+          if (textColor === '#ffffff') {
+            document.body.classList.add('dark-text-mode');
+          } else {
+            document.body.classList.remove('dark-text-mode');
+          }
+        } else {
+          document.body.classList.remove('dark-text-mode');
+        }
+        
+        // Update any dynamic tea-themed components
+        updateTeaThemedComponents(category);
+      }
+      
+      function updateTeaThemedComponents(category) {
+        // Update the tea-themed progress bar
+        const teaThemedProgress = document.getElementById('tea-themed-progress');
+        teaThemedProgress.innerHTML = '';
+        
+        if (category !== 'none') {
+          const color = teaColors.getColor(category);
+          
+          const title = document.createElement('div');
+          title.className = 'component-title';
+          title.textContent = `${category} Tea Themed Progress Bar`;
+          
+          const demo = document.createElement('div');
+          demo.className = 'component-demo';
+          
+          const progress = teaUI.createProgressBar({
+            value: 60,
+            color: color,
+            showPercentage: true
+          });
+          
+          demo.appendChild(progress);
+          
+          const code = document.createElement('div');
+          code.className = 'code-sample';
+          code.textContent = `teaUI.createProgressBar({
+  value: 60,
+  color: '${color}', // ${category} Tea color
+  showPercentage: true
+})`;
+          
+          teaThemedProgress.appendChild(title);
+          teaThemedProgress.appendChild(demo);
+          teaThemedProgress.appendChild(code);
+        }
+      }
+    }
+    
+    function initColorsSection() {
+      const categorySwatches = document.getElementById('category-swatches');
+      const greenVariations = document.getElementById('green-variations');
+      
+      // Clear existing content
+      categorySwatches.innerHTML = '';
+      greenVariations.innerHTML = '';
+      
+      // Populate category colors
+      const categories = [
+        { name: 'Green', color: '#7B9070', label: 'Wild Sage' },
+        { name: 'Yellow', color: '#D1CDA6', label: 'Coriander Seeds' },
+        { name: 'White', color: '#D8DCD5', label: 'Crescent Moon' },
+        { name: 'Oolong', color: '#C09565', label: 'Translucent Amber' },
+        { name: 'Black', color: '#A56256', label: 'Rustic Terracotta' },
+        { name: 'Pu-erh', color: '#6F5244', label: 'Powder Chocolate' },
+        { name: 'Herbal', color: '#9370db', label: 'Purple' }
+      ];
+      
+      categories.forEach(cat => {
+        // Create color swatch
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        
+        // Sample color display
+        const sample = document.createElement('div');
+        sample.className = 'color-sample';
+        sample.style.backgroundColor = cat.color;
+        
+        // Determine if text should be white or black based on background
+        const r = parseInt(cat.color.slice(1, 3), 16);
+        const g = parseInt(cat.color.slice(3, 5), 16);
+        const b = parseInt(cat.color.slice(5, 7), 16);
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        sample.style.color = luminance > 0.5 ? 'black' : 'white';
+        
+        sample.textContent = cat.name;
+        
+        // Color info
+        const info = document.createElement('div');
+        info.className = 'color-info';
+        
+        const nameEl = document.createElement('div');
+        nameEl.className = 'color-name';
+        nameEl.textContent = cat.label;
+        
+        const valueEl = document.createElement('div');
+        valueEl.className = 'color-value';
+        valueEl.textContent = cat.color;
+        
+        info.appendChild(nameEl);
+        info.appendChild(valueEl);
+        
+        swatch.appendChild(sample);
+        swatch.appendChild(info);
+        
+        categorySwatches.appendChild(swatch);
+      });
+      
+      // Populate green variations
+      const variations = teaColors.getColorVariations('Green');
+      const variationLabels = {
+        lighter: 'Lighter (20%)',
+        light: 'Light (10%)',
+        main: 'Main',
+        dark: 'Dark (10%)',
+        darker: 'Darker (20%)'
+      };
+      
+      Object.entries(variations).forEach(([key, color]) => {
+        const variation = document.createElement('div');
+        variation.className = 'color-variation';
+        
+        const sample = document.createElement('div');
+        sample.className = 'variation-sample';
+        sample.style.backgroundColor = color;
+        
+        const name = document.createElement('div');
+        name.className = 'variation-name';
+        name.textContent = `${variationLabels[key]} - ${color}`;
+        
+        variation.appendChild(sample);
+        variation.appendChild(name);
+        
+        greenVariations.appendChild(variation);
+      });
+    }
+    
+    function initButtons() {
+      // Clear any existing content
+      const buttonVariants = document.getElementById('button-variants');
+      const buttonSizes = document.getElementById('button-sizes');
+      const buttonFullWidth = document.getElementById('button-full-width');
+      const buttonDisabled = document.getElementById('button-disabled');
+      
+      buttonVariants.innerHTML = '';
+      buttonSizes.innerHTML = '';
+      buttonFullWidth.innerHTML = '';
+      buttonDisabled.innerHTML = '';
+      
+      // Button variants
+      const variants = ['primary', 'secondary', 'outline', 'text'];
+      
+      variants.forEach(variant => {
+        const button = teaUI.createButton({
+          text: variant.charAt(0).toUpperCase() + variant.slice(1),
+          variant: variant
+        });
+        button.style.marginRight = '10px';
+        buttonVariants.appendChild(button);
+      });
+      
+      // Button sizes
+      const sizes = ['small', 'medium', 'large'];
+      
+      sizes.forEach(size => {
+        const button = teaUI.createButton({
+          text: size.charAt(0).toUpperCase() + size.slice(1),
+          size: size
+        });
+        button.style.marginRight = '10px';
+        buttonSizes.appendChild(button);
+      });
+      
+      // Full width button
+      const fullWidthButton = teaUI.createButton({
+        text: 'Full Width Button',
+        fullWidth: true
+      });
+      buttonFullWidth.appendChild(fullWidthButton);
+      
+      // Disabled button
+      const disabledButton = teaUI.createButton({
+        text: 'Disabled Button',
+        disabled: true
+      });
+      buttonDisabled.appendChild(disabledButton);
+    }
+    
+    function initToggles() {
+      // Clear any existing content
+      const toggleBasic = document.getElementById('toggle-basic');
+      const toggleLabels = document.getElementById('toggle-labels');
+      const toggleColor = document.getElementById('toggle-color');
+      
+      toggleBasic.innerHTML = '';
+      toggleLabels.innerHTML = '';
+      toggleColor.innerHTML = '';
+      
+      // Basic toggle
+      const basicToggle = teaUI.createToggle({
+        checked: false
+      });
+      toggleBasic.appendChild(basicToggle);
+      
+      // Toggle with labels
+      const labelsToggle = teaUI.createToggle({
+        checked: false,
+        labelLeft: 'Western',
+        labelRight: 'Gongfu'
+      });
+      toggleLabels.appendChild(labelsToggle);
+      
+      // Custom color toggle
+      const colorToggle = teaUI.createToggle({
+        checked: true,
+        color: '#7B9070' // Green Tea color
+      });
+      toggleColor.appendChild(colorToggle);
+    }
+    
+    function initTabs() {
+      // Clear any existing content
+      const tabsDefault = document.getElementById('tabs-default');
+      const tabsPills = document.getElementById('tabs-pills');
+      
+      tabsDefault.innerHTML = '';
+      tabsPills.innerHTML = '';
+      
+      // Default tabs
+      const defaultTabs = teaUI.createTabs({
+        tabs: [
+          { label: 'Details', content: 'This is the details tab content.' },
+          { label: 'Brewing', content: 'This is the brewing tab content.' },
+          { label: 'Notes', content: 'This is the notes tab content.' }
+        ]
+      });
+      tabsDefault.appendChild(defaultTabs);
+      
+      // Pills tabs
+      const pillsTabs = teaUI.createTabs({
+        tabs: [
+          { label: 'Details', content: 'This is the details tab content.' },
+          { label: 'Brewing', content: 'This is the brewing tab content.' },
+          { label: 'Notes', content: 'This is the notes tab content.' }
+        ],
+        variant: 'pills'
+      });
+      tabsPills.appendChild(pillsTabs);
+    }
+    
+    function initCards() {
+      // Clear any existing content
+      const cardBasic = document.getElementById('card-basic');
+      const cardFooter = document.getElementById('card-footer');
+      const cardElevation = document.getElementById('card-elevation');
+      
+      cardBasic.innerHTML = '';
+      cardFooter.innerHTML = '';
+      cardElevation.innerHTML = '';
+      
+      // Basic card
+      const basicCard = teaUI.createCard({
+        title: 'Card Title',
+        content: 'This is the card content.'
+      });
+      cardBasic.appendChild(basicCard);
+      
+      // Card with footer
+      const footerCard = teaUI.createCard({
+        title: 'Card with Footer',
+        content: 'This card has a footer section.',
+        footer: 'Card Footer'
+      });
+      cardFooter.appendChild(footerCard);
+      
+      // Card elevation
+      const elevations = ['low', 'medium', 'high'];
+      const cardWrapper = document.createElement('div');
+      cardWrapper.style.display = 'flex';
+      cardWrapper.style.flexWrap = 'wrap';
+      cardWrapper.style.gap = '15px';
+      
+      elevations.forEach(elevation => {
+        const card = teaUI.createCard({
+          title: `${elevation.charAt(0).toUpperCase() + elevation.slice(1)} Elevation`,
+          content: `${elevation.charAt(0).toUpperCase() + elevation.slice(1)} shadow`,
+          elevation: elevation
+        });
+        card.style.width = '200px';
+        cardWrapper.appendChild(card);
+      });
+      
+      cardElevation.appendChild(cardWrapper);
+    }
+    
+    function initBadges() {
+      // Clear any existing content
+      const badgeVariants = document.getElementById('badge-variants');
+      const badgePill = document.getElementById('badge-pill');
+      const badgeOutline = document.getElementById('badge-outline');
+      
+      badgeVariants.innerHTML = '';
+      badgePill.innerHTML = '';
+      badgeOutline.innerHTML = '';
+      
+      // Badge variants
+      const variants = ['default', 'primary', 'success', 'warning', 'error'];
+      
+      variants.forEach(variant => {
+        const badge = teaUI.createBadge({
+          text: variant.charAt(0).toUpperCase() + variant.slice(1),
+          variant: variant
+        });
+        badge.style.marginRight = '10px';
+        badgeVariants.appendChild(badge);
+      });
+      
+      // Pill badges
+      const pillVariants = ['default', 'primary', 'success'];
+      
+      pillVariants.forEach(variant => {
+        const badge = teaUI.createBadge({
+          text: variant.charAt(0).toUpperCase() + variant.slice(1),
+          variant: variant,
+          pill: true
+        });
+        badge.style.marginRight = '10px';
+        badgePill.appendChild(badge);
+      });
+      
+      // Outline badges
+      const outlineVariants = ['default', 'primary', 'success'];
+      
+      outlineVariants.forEach(variant => {
+        const badge = teaUI.createBadge({
+          text: variant.charAt(0).toUpperCase() + variant.slice(1),
+          variant: variant,
+          outline: true
+        });
+        badge.style.marginRight = '10px';
+        badgeOutline.appendChild(badge);
+      });
+    }
+    
+    function initChips() {
+      // Clear any existing content
+      const chipBasic = document.getElementById('chip-basic');
+      const chipClosable = document.getElementById('chip-closable');
+      const chipColors = document.getElementById('chip-colors');
+      
+      chipBasic.innerHTML = '';
+      chipClosable.innerHTML = '';
+      chipColors.innerHTML = '';
+      
+      // Basic chips
+      const basicChip = teaUI.createChip({
+        text: 'Basic Chip'
+      });
+      chipBasic.appendChild(basicChip);
+      
+      // Closable chips
+      const closableChip = teaUI.createChip({
+        text: 'Closable Chip',
+        closable: true
+      });
+      chipClosable.appendChild(closableChip);
+      
+      // Custom color chips
+      const colorConfigs = [
+        { text: 'Green Tea', bg: '#7B9070', color: 'white' },
+        { text: 'Black Tea', bg: '#A56256', color: 'white' }
+      ];
+      
+      colorConfigs.forEach(config => {
+        const chip = teaUI.createChip({
+          text: config.text,
+          backgroundColor: config.bg,
+          color: config.color
+        });
+        chip.style.marginRight = '10px';
+        chipColors.appendChild(chip);
+      });
+    }
+    
+    function initProgressBars() {
+      // Clear any existing content
+      const progressBasic = document.getElementById('progress-basic');
+      const progressPercentage = document.getElementById('progress-percentage');
+      const progressStriped = document.getElementById('progress-striped');
+      const progressAnimated = document.getElementById('progress-animated');
+      const progressCustom = document.getElementById('progress-custom');
+      
+      progressBasic.innerHTML = '';
+      progressPercentage.innerHTML = '';
+      progressStriped.innerHTML = '';
+      progressAnimated.innerHTML = '';
+      progressCustom.innerHTML = '';
+      
+      // Basic progress bar
+      const basicProgress = teaUI.createProgressBar({
+        value: 50
+      });
+      progressBasic.appendChild(basicProgress);
+      
+      // Progress bar with percentage
+      const percentageProgress = teaUI.createProgressBar({
+        value: 75,
+        showPercentage: true
+      });
+      progressPercentage.appendChild(percentageProgress);
+      
+      // Striped progress bar
+      const stripedProgress = teaUI.createProgressBar({
+        value: 60,
+        striped: true
+      });
+      progressStriped.appendChild(stripedProgress);
+      
+      // Animated striped progress bar
+      const animatedProgress = teaUI.createProgressBar({
+        value: 80,
+        striped: true,
+        animated: true
+      });
+      progressAnimated.appendChild(animatedProgress);
+      
+      // Custom color progress bar
+      const customProgress = teaUI.createProgressBar({
+        value: 40,
+        color: '#7B9070' // Green tea color
+      });
+      progressCustom.appendChild(customProgress);
+    }
+  </script>
+</body>
+</html>
